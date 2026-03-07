@@ -58,7 +58,7 @@ Obrigatorias:
 - `APP_NAME=CloudHelm`
 - `SECRET_KEY=<defina-um-segredo-forte>`
 - `ACCESS_TOKEN_EXPIRE_MINUTES=120`
-- `DATABASE_URL=mysql+pymysql://antigravity:antigravity@db:3306/antigravity`
+- `DATABASE_URL=mysql+pymysql://cloudhelm:cloudhelm@db:3306/cloudhelm`
 
 Opcionais:
 
@@ -107,7 +107,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 Se for usar SQLite no fallback, configure no `.env`:
 
-`DATABASE_URL=sqlite:///./antigravity.db`
+`DATABASE_URL=sqlite:///./cloudhelm.db`
 
 ## 8) Job de catalogo cloud
 

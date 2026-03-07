@@ -17,7 +17,7 @@ module "compute" {
 
 module "database" {
   source       = "./modules/database"
-  db_name      = "antigravity"
+  db_name      = "cloudhelm"
   provider     = var.provider
   network_id   = module.network.network_id
 }

@@ -1,12 +1,12 @@
 services:
   db:
     image: mysql:8.4
-    container_name: agk-v1-db
+    container_name: cloudhelm-v1-db
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: antigravity
-      MYSQL_USER: antigravity
-      MYSQL_PASSWORD: antigravity
+      MYSQL_DATABASE: cloudhelm
+      MYSQL_USER: cloudhelm
+      MYSQL_PASSWORD: cloudhelm
       MYSQL_ROOT_PASSWORD: root
     ports:
       - "3307:3306"
@@ -22,7 +22,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: agk-v1-app
+    container_name: cloudhelm-v1-app
     restart: unless-stopped
     env_file:
       - .env

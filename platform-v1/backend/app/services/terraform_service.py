@@ -27,7 +27,7 @@ def build_terraform_modules(provider: str) -> dict[str, Any]:
             'module "database" {\n'
             '  source = "./modules/database"\n'
             "  provider = var.provider\n"
-            "  db_name = \"antigravity\"\n"
+            "  db_name = \"cloudhelm\"\n"
             "}\n"
         ),
         "observability": (
