@@ -2,12 +2,20 @@ const state = {
   token: null,
   userEmail: null,
   catalog: [],
+  llmSettings: {
+    llmProvider: "none",
+    llmModel: "",
+    openaiApiKey: "",
+    geminiApiKey: "",
+  },
 };
 
 const $ = (id) => document.getElementById(id);
+const SETTINGS_STORAGE_KEY = "cloudhelm.llm.settings.v1";
 
 const statusEl = $("status");
 const authStateEl = $("auth-state");
+const llmStateEl = $("llm-state");
 const architectureEl = $("architecture");
 const costsEl = $("costs");
 const terraformEl = $("terraform-modules");
@@ -15,6 +23,151 @@ const rankingEl = $("ranking");
 const aiBriefEl = $("ai-brief");
 const catalogGridEl = $("catalog-grid");
 const catalogMetaEl = $("catalog-meta");
+const settingsModalEl = $("settings-modal");
+const settingsProviderEl = $("settings-llm-provider");
+const settingsModelEl = $("settings-llm-model");
+const settingsOpenAiKeyEl = $("settings-openai-key");
+const settingsGeminiKeyEl = $("settings-gemini-key");
+const settingsOpenAiWrapEl = $("settings-openai-wrap");
+const settingsGeminiWrapEl = $("settings-gemini-wrap");
+const settingsValidationEl = $("settings-validation");
+
+function maskSecret(secret) {
+  if (!secret) return "nao configurada";
+  if (secret.length <= 8) return `${secret.slice(0, 2)}****`;
+  return `${secret.slice(0, 4)}****${secret.slice(-4)}`;
+}
+
+function setInputValidationState(inputEl, isValid, enabled = true) {
+  inputEl.classList.remove("border-emerald-400/70", "border-rose-400/70", "border-white/10");
+  if (!enabled) {
+    inputEl.classList.add("border-white/10");
+    return;
+  }
+  inputEl.classList.add(isValid ? "border-emerald-400/70" : "border-rose-400/70");
+}
+
+function loadSettingsFromStorage() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    state.llmSettings = {
+      llmProvider: parsed.llmProvider || "none",
+      llmModel: parsed.llmModel || "",
+      openaiApiKey: parsed.openaiApiKey || "",
+      geminiApiKey: parsed.geminiApiKey || "",
+    };
+  } catch (_e) {
+    localStorage.removeItem(SETTINGS_STORAGE_KEY);
+  }
+}
+
+function persistSettings() {
+  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state.llmSettings));
+}
+
+function evaluateLlmSettings(settings) {
+  if (settings.llmProvider === "none") {
+    return { valid: true, message: "Modo deterministico ativo.", level: "info" };
+  }
+  if (!settings.llmModel || settings.llmModel.length < 3) {
+    return { valid: false, message: "Modelo invalido. Minimo de 3 caracteres.", level: "error" };
+  }
+  if (settings.llmProvider === "openai") {
+    const key = settings.openaiApiKey.trim();
+    const valid = /^sk-[A-Za-z0-9_-]{20,}$/.test(key);
+    return valid
+      ? { valid: true, message: `OpenAI key valida (${maskSecret(key)}).`, level: "success" }
+      : { valid: false, message: "OpenAI key invalida. Esperado prefixo sk-.", level: "error" };
+  }
+  if (settings.llmProvider === "gemini") {
+    const key = settings.geminiApiKey.trim();
+    const valid = /^AIza[A-Za-z0-9_-]{20,}$/.test(key);
+    return valid
+      ? { valid: true, message: `Gemini key valida (${maskSecret(key)}).`, level: "success" }
+      : { valid: false, message: "Gemini key invalida. Esperado prefixo AIza.", level: "error" };
+  }
+  return { valid: false, message: "Provedor IA invalido.", level: "error" };
+}
+
+function updateLlmStateBadge() {
+  const evaluation = evaluateLlmSettings(state.llmSettings);
+  if (state.llmSettings.llmProvider === "none") {
+    llmStateEl.textContent = "IA: Deterministico";
+    llmStateEl.className =
+      "rounded-lg border border-white/10 bg-slate-950/60 px-3 py-1 text-xs text-slate-300";
+    return;
+  }
+  const providerLabel = state.llmSettings.llmProvider === "openai" ? "GPT" : "Gemini";
+  llmStateEl.textContent = evaluation.valid ? `IA: ${providerLabel} configurado` : `IA: ${providerLabel} invalido`;
+  llmStateEl.className = evaluation.valid
+    ? "rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300"
+    : "rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-1 text-xs text-rose-300";
+}
+
+function syncSettingsInputsFromState() {
+  settingsProviderEl.value = state.llmSettings.llmProvider;
+  settingsModelEl.value = state.llmSettings.llmModel;
+  settingsOpenAiKeyEl.value = state.llmSettings.openaiApiKey;
+  settingsGeminiKeyEl.value = state.llmSettings.geminiApiKey;
+}
+
+function readSettingsInputs() {
+  return {
+    llmProvider: settingsProviderEl.value,
+    llmModel: settingsModelEl.value.trim(),
+    openaiApiKey: settingsOpenAiKeyEl.value.trim(),
+    geminiApiKey: settingsGeminiKeyEl.value.trim(),
+  };
+}
+
+function updateSettingsFieldVisibility(provider) {
+  const openAiEnabled = provider === "openai";
+  const geminiEnabled = provider === "gemini";
+  settingsOpenAiKeyEl.disabled = !openAiEnabled;
+  settingsGeminiKeyEl.disabled = !geminiEnabled;
+  settingsOpenAiWrapEl.classList.toggle("opacity-40", !openAiEnabled);
+  settingsGeminiWrapEl.classList.toggle("opacity-40", !geminiEnabled);
+}
+
+function renderSettingsValidation(evaluation, draft) {
+  const validationClass =
+    evaluation.level === "success"
+      ? "rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-200"
+      : evaluation.level === "error"
+        ? "rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-xs text-rose-200"
+        : "rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-xs text-slate-300";
+  settingsValidationEl.className = validationClass;
+  settingsValidationEl.textContent = evaluation.message;
+
+  const keyToValidate = draft.llmProvider === "gemini" ? settingsGeminiKeyEl : settingsOpenAiKeyEl;
+  const otherKey = draft.llmProvider === "gemini" ? settingsOpenAiKeyEl : settingsGeminiKeyEl;
+
+  setInputValidationState(settingsModelEl, draft.llmProvider === "none" || draft.llmModel.length >= 3);
+  setInputValidationState(keyToValidate, draft.llmProvider === "none" || evaluation.valid, draft.llmProvider !== "none");
+  setInputValidationState(otherKey, true, false);
+}
+
+function validateSettingsUi() {
+  const draft = readSettingsInputs();
+  updateSettingsFieldVisibility(draft.llmProvider);
+  const evaluation = evaluateLlmSettings(draft);
+  renderSettingsValidation(evaluation, draft);
+  return { draft, evaluation };
+}
+
+function openSettingsModal() {
+  syncSettingsInputsFromState();
+  validateSettingsUi();
+  settingsModalEl.classList.remove("hidden");
+  settingsModalEl.classList.add("flex");
+}
+
+function closeSettingsModal() {
+  settingsModalEl.classList.add("hidden");
+  settingsModalEl.classList.remove("flex");
+}
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
@@ -263,10 +416,22 @@ async function orchestrate() {
   let rawInput = $("demand-input").value.trim();
   let inputType = "text";
   const provider = $("provider").value;
-  const llmProvider = $("llm-provider").value;
-  const llmModel = $("llm-model").value.trim();
-  const llmApiKey = $("llm-api-key").value.trim();
+  const llmProvider = state.llmSettings.llmProvider;
+  const llmModel = state.llmSettings.llmModel || null;
+  const llmApiKey =
+    llmProvider === "openai"
+      ? state.llmSettings.openaiApiKey || null
+      : llmProvider === "gemini"
+        ? state.llmSettings.geminiApiKey || null
+        : null;
   const fileInput = $("demand-file");
+
+  const llmEvaluation = evaluateLlmSettings(state.llmSettings);
+  if (llmProvider !== "none" && !llmEvaluation.valid) {
+    setStatus("Settings IA invalido. Clique em 'Settings IA' e valide sua chave.", true);
+    openSettingsModal();
+    return;
+  }
 
   if (fileInput.files.length > 0 && !rawInput) {
     setStatus("Transcrevendo audio...");
@@ -317,8 +482,8 @@ async function orchestrate() {
     body: JSON.stringify({
       provider,
       llm_provider: llmProvider,
-      llm_model: llmModel || null,
-      llm_api_key: llmApiKey || null,
+      llm_model: llmModel,
+      llm_api_key: llmApiKey,
     }),
   });
   if (!orchestrationRes.ok) {
@@ -362,6 +527,13 @@ async function transcribeAudio() {
   setStatus(`Transcricao concluida via ${data.source} (${data.model}).`);
 }
 
+function initSettingsUi() {
+  loadSettingsFromStorage();
+  updateLlmStateBadge();
+  syncSettingsInputsFromState();
+  validateSettingsUi();
+}
+
 $("register-btn").addEventListener("click", register);
 $("login-btn").addEventListener("click", login);
 $("orchestrate-btn").addEventListener("click", orchestrate);
@@ -369,5 +541,44 @@ $("transcribe-btn").addEventListener("click", transcribeAudio);
 $("catalog-sync-btn").addEventListener("click", syncCatalog);
 $("catalog-provider-filter").addEventListener("change", loadCatalog);
 $("catalog-search").addEventListener("input", applyCatalogFilter);
+$("open-settings-btn").addEventListener("click", openSettingsModal);
+$("close-settings-btn").addEventListener("click", closeSettingsModal);
+$("test-settings-btn").addEventListener("click", () => {
+  const { evaluation } = validateSettingsUi();
+  setStatus(evaluation.message, !evaluation.valid);
+});
+$("save-settings-btn").addEventListener("click", () => {
+  const { draft, evaluation } = validateSettingsUi();
+  if (!evaluation.valid) {
+    setStatus("Nao foi possivel salvar. Corrija os campos de Settings IA.", true);
+    return;
+  }
+  state.llmSettings = draft;
+  persistSettings();
+  updateLlmStateBadge();
+  setStatus("Settings IA salvos localmente.");
+  closeSettingsModal();
+});
+$("clear-settings-btn").addEventListener("click", () => {
+  state.llmSettings = {
+    llmProvider: "none",
+    llmModel: "",
+    openaiApiKey: "",
+    geminiApiKey: "",
+  };
+  persistSettings();
+  syncSettingsInputsFromState();
+  validateSettingsUi();
+  updateLlmStateBadge();
+  setStatus("Settings IA limpos.");
+});
+settingsProviderEl.addEventListener("change", validateSettingsUi);
+settingsModelEl.addEventListener("input", validateSettingsUi);
+settingsOpenAiKeyEl.addEventListener("input", validateSettingsUi);
+settingsGeminiKeyEl.addEventListener("input", validateSettingsUi);
+settingsModalEl.addEventListener("click", (event) => {
+  if (event.target === settingsModalEl) closeSettingsModal();
+});
 
+initSettingsUi();
 loadCatalog();
