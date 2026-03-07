@@ -63,6 +63,20 @@ Windows PowerShell (if `docker` is not in PATH):
   - `FRONTEND_BACKOFFICE_URL`: GitHub Pages backoffice URL
 - Workflow `.github/workflows/github-pages.yml` publishes automatically on push to `main`.
 
+## Architecture Diagram
+
+```mermaid
+flowchart TD
+    Browser[Browser] --> Pages[GitHub Pages Frontend]
+    Pages -->|API_BASE_URL| Backend[FastAPI Backend]
+    Backend -->|DATABASE_URL| Supabase[(Supabase Postgres)]
+    Pages -->|Entrar com GitHub| GithubAuth[GitHub OAuth]
+    GithubAuth -->|redirect_uri| Backend
+    Backend -->|token no querystring| Pages
+    Backend --> BackofficeAPI[/Backoffice APIs/]
+    BackofficeAPI --> LLMConf[(LLM Runtime Config)]
+```
+
 ## GitHub OAuth Setup
 
 Create a GitHub OAuth App and configure:

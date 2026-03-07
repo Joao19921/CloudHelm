@@ -14,6 +14,19 @@ Official repository for the **CloudHelm** product.
 - Backend API: public FastAPI runtime (Render/Railway/Fly/etc.)
 - Database: Supabase Postgres
 
+## Architecture Diagram
+
+```mermaid
+flowchart LR
+    U[Usuario] --> FE[GitHub Pages Frontend]
+    FE -->|HTTPS REST| API[CloudHelm FastAPI Backend]
+    API -->|SQLAlchemy / SSL| DB[(Supabase Postgres)]
+    FE -->|Login| GH[GitHub OAuth]
+    GH -->|Callback| API
+    API -->|JWT token redirect| FE
+    API --> LLM[OpenAI / Gemini]
+```
+
 ## Setup Guides
 
 - [`platform-v1/README.md`](platform-v1/README.md)
