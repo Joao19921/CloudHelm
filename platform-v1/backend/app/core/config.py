@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     transcribe_model: str = "whisper-1"
     github_client_id: str | None = None
     github_client_secret: str | None = None
-    github_redirect_uri: str = "http://localhost:8000/api/auth/github/callback"
+    github_redirect_uri: str
     github_admin_logins: str = ""
     frontend_public_url: str = "http://localhost:8000"
     cors_origins: str = "http://localhost:8000"
