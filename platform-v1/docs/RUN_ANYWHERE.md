@@ -1,24 +1,13 @@
-# CloudHelm V1.1 - Requisitos e Execucao
+# CloudHelm V1 - Run Anywhere (Supabase First)
 
-Este guia descreve tudo que qualquer pessoa precisa para rodar o projeto localmente.
-
-## 1) Requisitos obrigatorios
+## 1) Mandatory prerequisites
 
 - Git 2.40+
-- Docker Desktop 4.29+ (com Docker Compose v2 habilitado)
-- 4 GB RAM livres para containers
-- 2 vCPUs livres
-- 5 GB de disco
-- Portas livres:
-  - `8000` (app)
-  - `3307` (MySQL local mapeado)
+- Docker Desktop 4.29+ (Compose v2 enabled)
+- Free port: `8000`
+- A Supabase project (Free tier works for POC)
 
-## 2) Requisitos opcionais (modo sem Docker)
-
-- Python 3.12+
-- `pip` atualizado
-
-## 3) Clonar e preparar
+## 2) Clone and bootstrap
 
 ```bash
 git clone https://github.com/Joao19921/CloudHelm.git
@@ -26,7 +15,7 @@ cd CloudHelm/platform-v1
 cp .env.example .env
 ```
 
-No Windows PowerShell:
+Windows PowerShell:
 
 ```powershell
 git clone https://github.com/Joao19921/CloudHelm.git
@@ -34,73 +23,66 @@ cd CloudHelm/platform-v1
 Copy-Item .env.example .env
 ```
 
-## 3.1) Checagem automatica de pre-requisitos
+## 3) Configure environment (`.env`)
 
-Windows:
-
-```powershell
-.\scripts\check-prereqs.ps1
-```
-
-Linux/macOS:
-
-```bash
-chmod +x ./scripts/check-prereqs.sh
-./scripts/check-prereqs.sh
-```
-
-## 4) Variaveis de ambiente
-
-Arquivo: `.env`
-
-Obrigatorias:
+Required:
 
 - `APP_NAME=CloudHelm`
-- `SECRET_KEY=<defina-um-segredo-forte>`
+- `SECRET_KEY=<strong-random-secret>`
 - `ACCESS_TOKEN_EXPIRE_MINUTES=120`
-- `DATABASE_URL=mysql+pymysql://cloudhelm:cloudhelm@db:3306/cloudhelm`
+- `DATABASE_URL=postgresql+psycopg://postgres:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres?sslmode=require`
+- `GITHUB_CLIENT_ID=<github-oauth-client-id>`
+- `GITHUB_CLIENT_SECRET=<github-oauth-client-secret>`
+- `GITHUB_REDIRECT_URI=http://localhost:8000/api/auth/github/callback`
+- `GITHUB_ADMIN_LOGINS=<your_github_login>`
 
-Opcionais:
+Optional:
 
-- `OPENAI_API_KEY=` para transcricao real de audio
-- `GEMINI_API_KEY=` para analise de arquitetura via Gemini
+- `OPENAI_API_KEY=`
+- `GEMINI_API_KEY=`
 - `OPENAI_CHAT_MODEL=gpt-4o-mini`
 - `GEMINI_MODEL=gemini-1.5-flash`
 - `TRANSCRIBE_MODEL=whisper-1`
-- `GITHUB_CLIENT_ID=`
-- `GITHUB_CLIENT_SECRET=`
-- `GITHUB_REDIRECT_URI=http://localhost:8000/api/auth/github/callback`
-- `GITHUB_ADMIN_LOGINS=seu_login_github`
 
-## 5) Subir com Docker (recomendado)
+## 4) Run with Docker
 
 ```bash
 docker compose up --build
 ```
 
-No Windows PowerShell (quando `docker` nao estiver no PATH):
+Windows PowerShell (if `docker` is not in PATH):
 
 ```powershell
 & "C:\Program Files\Docker\Docker\resources\bin\docker.exe" compose up --build
 ```
 
-Acessar:
+Access:
 
-- UI: `http://localhost:8000`
+- App: `http://localhost:8000`
+- Backoffice: `http://localhost:8000/backoffice`
 - Health: `http://localhost:8000/health`
+- API docs: `http://localhost:8000/docs`
 
-## 6) Fluxo funcional minimo apos subir
+## 5) GitHub OAuth configuration
 
-1. Entrar com `GitHub` na tela principal.
-2. Se nao for admin/aprovado ainda, aguardar aprovacao no Backoffice.
-3. Admin acessa `/backoffice`, aprova usuarios e define engine/chave de IA.
-4. Usuario aprovado envia demanda em texto ou audio.
-5. Se audio, usar `Transcrever Audio Automaticamente`.
-6. Orquestrar com provider especifico ou `Auto (Ranking)`.
+In GitHub OAuth App:
 
-## 7) Rodar sem Docker (fallback)
+- Homepage URL: `http://localhost:8000`
+- Callback URL: `http://localhost:8000/api/auth/github/callback`
 
-Dentro de `platform-v1/backend`:
+For production, set your public domain callback and update `GITHUB_REDIRECT_URI`.
+
+## 6) First functional flow
+
+1. Login with GitHub on `/`.
+2. If pending approval, access `/backoffice` with admin user.
+3. Approve users in Backoffice.
+4. Set internal LLM provider/model/key in Backoffice.
+5. Create demand and run orchestration in main app.
+
+## 7) Without Docker (fallback)
+
+Inside `platform-v1/backend`:
 
 ```bash
 python -m venv .venv
@@ -109,7 +91,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-No Windows:
+Windows:
 
 ```powershell
 python -m venv .venv
@@ -118,83 +100,31 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Se for usar SQLite no fallback, configure no `.env`:
+## 8) Troubleshooting
 
-`DATABASE_URL=sqlite:///./cloudhelm.db`
+- `GitHub OAuth not configured`:
+  - Fill `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`.
+- DB connection error:
+  - Validate Supabase `DATABASE_URL`, password, project ref, and `sslmode=require`.
+- `open //./pipe/docker_engine: Access is denied`:
+  - Open PowerShell as Administrator and validate `docker info`.
+- Port 8000 busy:
+  - Change compose mapping to `8001:8000`.
 
-## 8) Job de catalogo cloud
+## 9) API route list
 
-Script:
-
-`backend/jobs/alimentador.py`
-
-Execucao manual:
-
-```bash
-python jobs/alimentador.py
-```
-
-Agendamento Linux (diario, meia-noite):
-
-```bash
-0 0 * * * /usr/bin/python3 /caminho/CloudHelm/platform-v1/backend/jobs/alimentador.py
-```
-
-## 9) APIs principais
-
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/demands`
-- `POST /api/demands/transcribe`
-- `POST /api/demands/{id}/orchestrate`
-  - body aceita: `provider`
-- `GET /api/catalog/items`
-- `POST /api/catalog/sync`
-- `GET /api/catalog/summary`
 - `GET /api/auth/github/url`
 - `GET /api/auth/github/callback`
+- `GET /api/auth/session`
+- `POST /api/demands`
+- `GET /api/demands`
+- `POST /api/demands/{demand_id}/orchestrate`
+- `POST /api/demands/transcribe`
+- `POST /api/catalog/sync`
+- `GET /api/catalog/items`
+- `GET /api/catalog/summary`
 - `GET /api/backoffice/users`
-- `POST /api/backoffice/users/{id}/approve`
-- `POST /api/backoffice/users/{id}/revoke`
+- `POST /api/backoffice/users/{user_id}/approve`
+- `POST /api/backoffice/users/{user_id}/revoke`
 - `GET /api/backoffice/llm-config`
 - `PUT /api/backoffice/llm-config`
-
-## 10) Troubleshooting rapido
-
-- Erro `python not found`:
-  - Instalar Python 3.12 e adicionar ao PATH.
-- Erro `docker not found`:
-  - Instalar Docker Desktop e reiniciar terminal.
-- Erro `open //./pipe/docker_engine: Access is denied`:
-  - Abrir PowerShell como Administrador e iniciar o Docker Desktop.
-  - Validar daemon: `docker info`.
-- Porta 8000 ocupada:
-  - Trocar mapeamento no `docker-compose.yml` para `8001:8000`.
-- Falha na transcricao:
-  - Sem `OPENAI_API_KEY`, a plataforma usa fallback local (esperado).
-- Falha no sync de catalogo:
-  - Verificar conectividade externa para APIs publicas.
-
-## 11) Checklist de pronto para rodar
-
-- [ ] Docker Desktop instalado
-- [ ] `.env` criado
-- [ ] `docker compose up --build` executado sem erro
-- [ ] `GET /health` retorna `{"status":"ok"}`
-- [ ] Login funcionando
-- [ ] Orquestracao funcionando
-
-## 12) Publicar no GitHub (CloudHelm)
-
-Remoto do projeto:
-
-`https://github.com/Joao19921/CloudHelm.git`
-
-Comandos sugeridos:
-
-```bash
-git remote add cloudhelm https://github.com/Joao19921/CloudHelm.git
-git add platform-v1
-git commit -m "feat: CloudHelm v1.1 web platform"
-git push cloudhelm HEAD:main
-```

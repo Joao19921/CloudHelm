@@ -1,23 +1,40 @@
-# CloudHelm V1
+# CloudHelm V1 (Supabase)
 
-Local-first V1 for requirement intake, cloud mapping, architecture preview, and Terraform generation.
+CloudHelm is a web platform to orchestrate requirements, suggest cloud architecture, estimate monthly cost, and generate Terraform modules.
 
 ## Stack
 
-- Backend: FastAPI (Python)
-- UI: Server-rendered HTML + Tailwind CDN
-- Database: MySQL (Docker) with SQLite fallback
-- Infra local: Docker Compose
+- Backend: FastAPI (Python 3.12)
+- UI: Server-rendered HTML + Tailwind CSS
+- Database: Supabase Postgres (primary)
+- Auth: GitHub OAuth + admin approval gate
+- Runtime: Docker Compose (app service)
 
-## Run Local
+## Quick Start
 
-1. Copy env:
+1. Clone and enter folder:
+
+```bash
+git clone https://github.com/Joao19921/CloudHelm.git
+cd CloudHelm/platform-v1
+```
+
+2. Create `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-2. Start:
+3. Fill required env vars in `.env`:
+
+- `DATABASE_URL` (Supabase connection string with `sslmode=require`)
+- `SECRET_KEY`
+- `GITHUB_CLIENT_ID`
+- `GITHUB_CLIENT_SECRET`
+- `GITHUB_REDIRECT_URI`
+- `GITHUB_ADMIN_LOGINS`
+
+4. Run:
 
 ```bash
 docker compose up --build
@@ -29,67 +46,65 @@ Windows PowerShell (if `docker` is not in PATH):
 & "C:\Program Files\Docker\Docker\resources\bin\docker.exe" compose up --build
 ```
 
-3. Open:
+5. Open:
 
-`http://localhost:8000`
+- App: `http://localhost:8000`
+- Backoffice: `http://localhost:8000/backoffice`
+- Health: `http://localhost:8000/health`
 
-## Complete Setup Guide
+## GitHub OAuth Setup
 
-- [Run Anywhere Guide](./docs/RUN_ANYWHERE.md)
-- Prereq check scripts:
-  - `./scripts/check-prereqs.ps1` (Windows)
-  - `./scripts/check-prereqs.sh` (Linux/macOS)
+Create a GitHub OAuth App and configure:
 
-## Main Features (V1)
+- Homepage URL: `http://localhost:8000`
+- Authorization callback URL: `http://localhost:8000/api/auth/github/callback`
 
-- GitHub OAuth login with admin approval gate
-- Backoffice admin panel for LLM provider/model/API keys
-- Demand input (text/audio transcript as text payload)
-- Cloud provider selection (AWS, GCP, Azure)
-- Modular architecture and monthly cost view
-- Terraform snippets per provider and module
-- Cloud catalog sync (AWS/GCP seeded baseline + Azure retail API)
-- Fuzzy icon matching and static JSON export (`dist_cloud_data/cloud_master_data.json`)
-- Audio upload + automatic transcription endpoint
-- Provider ranking engine (cost + SLA + catalog signal)
-- Multi-LLM POC: choose GPT or Gemini by API key at orchestration time
+For production, replace with your public domain callback.
+
+## Main Features
+
+- Requirement intake (text/audio)
+- Automatic transcription endpoint
+- Provider selection (`aws`, `gcp`, `azure`, `auto`)
+- Architecture/cost/terraform orchestration
+- Cloud catalog sync and provider ranking
+- Backoffice for:
+  - LLM provider/model/API key control (internal only)
+  - User approval and access revocation
+
+## Web Routes
+
+- `GET /` main application
+- `GET /backoffice` admin backoffice
+- `GET /health` service health
+- `GET /docs` Swagger UI
+- `GET /openapi.json` OpenAPI schema
 
 ## API Overview
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/demands`
-- `POST /api/demands/transcribe`
-- `POST /api/demands/{id}/orchestrate`
-- `GET /api/demands`
-- `GET /api/providers`
-- `GET /api/terraform/{provider}`
-- `POST /api/catalog/sync`
-- `GET /api/catalog/items`
-- `GET /api/catalog/summary`
-- `GET /api/auth/github/url`
-- `GET /api/auth/github/callback`
-- `GET /api/backoffice/users`
-- `POST /api/backoffice/users/{id}/approve`
-- `POST /api/backoffice/users/{id}/revoke`
-- `GET /api/backoffice/llm-config`
-- `PUT /api/backoffice/llm-config`
+- Auth:
+  - `GET /api/auth/github/url`
+  - `GET /api/auth/github/callback`
+  - `GET /api/auth/session`
+- Demands:
+  - `POST /api/demands`
+  - `GET /api/demands`
+  - `POST /api/demands/{demand_id}/orchestrate`
+  - `POST /api/demands/transcribe`
+- Catalog:
+  - `POST /api/catalog/sync`
+  - `GET /api/catalog/items`
+  - `GET /api/catalog/summary`
+- Backoffice:
+  - `GET /api/backoffice/users`
+  - `POST /api/backoffice/users/{user_id}/approve`
+  - `POST /api/backoffice/users/{user_id}/revoke`
+  - `GET /api/backoffice/llm-config`
+  - `PUT /api/backoffice/llm-config`
 
-## V1.1 Notes
+## Notes
 
-- Automatic transcription uses OpenAI when `OPENAI_API_KEY` is configured.
-- Without key, the system uses local fallback transcript text to keep flow running.
-- Provider ranking is returned in orchestration response (`ranking` field).
-- Orchestration accepts optional `llm_provider`, `llm_model`, and `llm_api_key`.
-
-## Cloud Catalog Job
-
-Daily sync job script:
-
-`backend/jobs/alimentador.py`
-
-Run manually inside the app container:
-
-```bash
-python jobs/alimentador.py
-```
+- If you need local-only fallback, use:
+  - `DATABASE_URL=sqlite:///./cloudhelm.db`
+- Full operational guide:
+  - [docs/RUN_ANYWHERE.md](./docs/RUN_ANYWHERE.md)

@@ -69,13 +69,13 @@ def ensure_users_schema_columns() -> None:
         migrations.append(
             "ALTER TABLE users ADD COLUMN is_admin TINYINT(1) DEFAULT 0"
             if dialect == "mysql"
-            else "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0"
+            else "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE"
         )
     if "is_approved" not in existing_columns:
         migrations.append(
             "ALTER TABLE users ADD COLUMN is_approved TINYINT(1) DEFAULT 0"
             if dialect == "mysql"
-            else "ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT 0"
+            else "ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT FALSE"
         )
 
     with engine.begin() as connection:

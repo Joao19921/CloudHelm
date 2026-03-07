@@ -17,7 +17,7 @@ services:
       - key: SECRET_KEY
         sync: false
       - key: DATABASE_URL
-        value: sqlite:////var/data/cloudhelm.db
+        sync: false
       - key: OPENAI_CHAT_MODEL
         value: gpt-4o-mini
       - key: GEMINI_MODEL
@@ -32,7 +32,3 @@ services:
         sync: false
       - key: GITHUB_ADMIN_LOGINS
         sync: false
-    disk:
-      name: cloudhelm-data
-      mountPath: /var/data
-      sizeGB: 1
