@@ -5,7 +5,7 @@ CloudHelm is a web platform to orchestrate requirements, suggest cloud architect
 ## Stack
 
 - Backend: FastAPI (Python 3.12)
-- UI: Server-rendered HTML + Tailwind CSS
+- Frontend: GitHub Pages static site (`/frontend`)
 - Database: Supabase Postgres (primary)
 - Auth: GitHub OAuth + admin approval gate
 - Runtime: Docker Compose (app service)
@@ -33,6 +33,8 @@ cp .env.example .env
 - `GITHUB_CLIENT_SECRET`
 - `GITHUB_REDIRECT_URI`
 - `GITHUB_ADMIN_LOGINS`
+- `FRONTEND_PUBLIC_URL`
+- `CORS_ORIGINS`
 
 4. Run:
 
@@ -46,11 +48,20 @@ Windows PowerShell (if `docker` is not in PATH):
 & "C:\Program Files\Docker\Docker\resources\bin\docker.exe" compose up --build
 ```
 
-5. Open:
+5. Open backend locally:
 
 - App: `http://localhost:8000`
 - Backoffice: `http://localhost:8000/backoffice`
 - Health: `http://localhost:8000/health`
+
+## Frontend on GitHub Pages
+
+- Static frontend files are in `../frontend`.
+- Configure `frontend/config.js`:
+  - `API_BASE_URL`: public backend URL
+  - `FRONTEND_HOME_URL`: GitHub Pages root URL
+  - `FRONTEND_BACKOFFICE_URL`: GitHub Pages backoffice URL
+- Workflow `.github/workflows/github-pages.yml` publishes automatically on push to `main`.
 
 ## GitHub OAuth Setup
 
@@ -59,7 +70,10 @@ Create a GitHub OAuth App and configure:
 - Homepage URL: `http://localhost:8000`
 - Authorization callback URL: `http://localhost:8000/api/auth/github/callback`
 
-For production, replace with your public domain callback.
+For production:
+
+- GitHub callback must point to your backend callback endpoint.
+- Set backend env `FRONTEND_PUBLIC_URL` to your GitHub Pages URL so token redirect returns to frontend.
 
 ## Main Features
 
@@ -79,6 +93,11 @@ For production, replace with your public domain callback.
 - `GET /health` service health
 - `GET /docs` Swagger UI
 - `GET /openapi.json` OpenAPI schema
+
+GitHub Pages frontend routes:
+
+- `/` (index.html)
+- `/backoffice.html`
 
 ## API Overview
 

@@ -35,6 +35,8 @@ Required:
 - `GITHUB_CLIENT_SECRET=<github-oauth-client-secret>`
 - `GITHUB_REDIRECT_URI=http://localhost:8000/api/auth/github/callback`
 - `GITHUB_ADMIN_LOGINS=<your_github_login>`
+- `FRONTEND_PUBLIC_URL=http://localhost:8000`
+- `CORS_ORIGINS=http://localhost:8000`
 
 Optional:
 
@@ -70,7 +72,11 @@ In GitHub OAuth App:
 - Homepage URL: `http://localhost:8000`
 - Callback URL: `http://localhost:8000/api/auth/github/callback`
 
-For production, set your public domain callback and update `GITHUB_REDIRECT_URI`.
+For production:
+
+- Set `GITHUB_REDIRECT_URI` to your backend callback URL.
+- Set `FRONTEND_PUBLIC_URL` to your GitHub Pages URL.
+- Include your GitHub Pages domain in `CORS_ORIGINS`.
 
 ## 6) First functional flow
 
@@ -79,6 +85,18 @@ For production, set your public domain callback and update `GITHUB_REDIRECT_URI`
 3. Approve users in Backoffice.
 4. Set internal LLM provider/model/key in Backoffice.
 5. Create demand and run orchestration in main app.
+
+## 6.1) Frontend on GitHub Pages
+
+1. Configure `frontend/config.js`:
+  - `API_BASE_URL=https://<your-backend-domain>`
+  - `FRONTEND_HOME_URL=https://<user>.github.io/<repo>/`
+  - `FRONTEND_BACKOFFICE_URL=https://<user>.github.io/<repo>/backoffice.html`
+2. Push to `main`.
+3. GitHub Actions workflow `github-pages.yml` publishes automatically.
+4. Access:
+  - `https://<user>.github.io/<repo>/`
+  - `https://<user>.github.io/<repo>/backoffice.html`
 
 ## 7) Without Docker (fallback)
 

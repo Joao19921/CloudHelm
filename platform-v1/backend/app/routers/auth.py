@@ -183,11 +183,12 @@ def github_callback(
             is_approved=admin_by_allowlist or bootstrap_admin,
         )
 
+    frontend_base = settings.frontend_public_url.rstrip("/")
     if not user.is_approved:
-        return RedirectResponse(url="/?pending=approval", status_code=status.HTTP_302_FOUND)
+        return RedirectResponse(url=f"{frontend_base}/?pending=approval", status_code=status.HTTP_302_FOUND)
 
     app_token = create_access_token(subject=str(user.id))
-    return RedirectResponse(url=f"/?token={app_token}", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(url=f"{frontend_base}/?token={app_token}", status_code=status.HTTP_302_FOUND)
 
 
 @router.get("/session", response_model=SessionResponse)

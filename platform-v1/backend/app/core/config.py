@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     github_client_secret: str | None = None
     github_redirect_uri: str = "http://localhost:8000/api/auth/github/callback"
     github_admin_logins: str = ""
+    frontend_public_url: str = "http://localhost:8000"
+    cors_origins: str = "http://localhost:8000"
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -29,6 +31,11 @@ class Settings(BaseSettings):
             for item in self.github_admin_logins.split(",")
             if item.strip()
         }
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        items = [item.strip() for item in self.cors_origins.split(",") if item.strip()]
+        return items or ["http://localhost:8000"]
 
 
 settings = Settings()
