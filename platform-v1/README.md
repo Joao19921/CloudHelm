@@ -23,6 +23,12 @@ cp .env.example .env
 docker compose up --build
 ```
 
+Windows PowerShell (if `docker` is not in PATH):
+
+```powershell
+& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" compose up --build
+```
+
 3. Open:
 
 `http://localhost:8000`

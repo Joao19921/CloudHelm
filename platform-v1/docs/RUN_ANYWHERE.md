@@ -74,6 +74,12 @@ Opcionais:
 docker compose up --build
 ```
 
+No Windows PowerShell (quando `docker` nao estiver no PATH):
+
+```powershell
+& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" compose up --build
+```
+
 Acessar:
 
 - UI: `http://localhost:8000`
@@ -149,6 +155,9 @@ Agendamento Linux (diario, meia-noite):
   - Instalar Python 3.12 e adicionar ao PATH.
 - Erro `docker not found`:
   - Instalar Docker Desktop e reiniciar terminal.
+- Erro `open //./pipe/docker_engine: Access is denied`:
+  - Abrir PowerShell como Administrador e iniciar o Docker Desktop.
+  - Validar daemon: `docker info`.
 - Porta 8000 ocupada:
   - Trocar mapeamento no `docker-compose.yml` para `8001:8000`.
 - Falha na transcricao:
