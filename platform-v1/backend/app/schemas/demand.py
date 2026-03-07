@@ -22,9 +22,6 @@ class DemandResponse(BaseModel):
 
 class OrchestrateRequest(BaseModel):
     provider: str = Field(pattern="^(aws|gcp|azure|auto)$")
-    llm_provider: str = Field(default="none", pattern="^(none|openai|gemini)$")
-    llm_api_key: str | None = Field(default=None, min_length=10, max_length=300)
-    llm_model: str | None = Field(default=None, min_length=3, max_length=100)
 
 
 class DemandAnalysisResponse(BaseModel):

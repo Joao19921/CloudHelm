@@ -67,6 +67,10 @@ Opcionais:
 - `OPENAI_CHAT_MODEL=gpt-4o-mini`
 - `GEMINI_MODEL=gemini-1.5-flash`
 - `TRANSCRIBE_MODEL=whisper-1`
+- `GITHUB_CLIENT_ID=`
+- `GITHUB_CLIENT_SECRET=`
+- `GITHUB_REDIRECT_URI=http://localhost:8000/api/auth/github/callback`
+- `GITHUB_ADMIN_LOGINS=seu_login_github`
 
 ## 5) Subir com Docker (recomendado)
 
@@ -87,13 +91,12 @@ Acessar:
 
 ## 6) Fluxo funcional minimo apos subir
 
-1. Registrar usuario.
-2. Fazer login.
-3. (Opcional) Sincronizar catalogo cloud em `Catalogo Cloud Providers`.
-4. Enviar demanda em texto ou audio.
+1. Entrar com `GitHub` na tela principal.
+2. Se nao for admin/aprovado ainda, aguardar aprovacao no Backoffice.
+3. Admin acessa `/backoffice`, aprova usuarios e define engine/chave de IA.
+4. Usuario aprovado envia demanda em texto ou audio.
 5. Se audio, usar `Transcrever Audio Automaticamente`.
-6. (Opcional) Definir LLM: `OpenAI (GPT)` ou `Google Gemini`, preencher chave e modelo.
-7. Orquestrar com provider especifico ou `Auto (Ranking)`.
+6. Orquestrar com provider especifico ou `Auto (Ranking)`.
 
 ## 7) Rodar sem Docker (fallback)
 
@@ -144,10 +147,17 @@ Agendamento Linux (diario, meia-noite):
 - `POST /api/demands`
 - `POST /api/demands/transcribe`
 - `POST /api/demands/{id}/orchestrate`
-  - body aceita: `provider`, `llm_provider`, `llm_model`, `llm_api_key`
+  - body aceita: `provider`
 - `GET /api/catalog/items`
 - `POST /api/catalog/sync`
 - `GET /api/catalog/summary`
+- `GET /api/auth/github/url`
+- `GET /api/auth/github/callback`
+- `GET /api/backoffice/users`
+- `POST /api/backoffice/users/{id}/approve`
+- `POST /api/backoffice/users/{id}/revoke`
+- `GET /api/backoffice/llm-config`
+- `PUT /api/backoffice/llm-config`
 
 ## 10) Troubleshooting rapido
 

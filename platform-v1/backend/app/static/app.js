@@ -1,21 +1,14 @@
+const AUTH_TOKEN_KEY = "cloudhelm.auth.token";
 const state = {
   token: null,
-  userEmail: null,
+  session: null,
   catalog: [],
-  llmSettings: {
-    llmProvider: "none",
-    llmModel: "",
-    openaiApiKey: "",
-    geminiApiKey: "",
-  },
 };
 
 const $ = (id) => document.getElementById(id);
-const SETTINGS_STORAGE_KEY = "cloudhelm.llm.settings.v1";
 
 const statusEl = $("status");
 const authStateEl = $("auth-state");
-const llmStateEl = $("llm-state");
 const architectureEl = $("architecture");
 const costsEl = $("costs");
 const terraformEl = $("terraform-modules");
@@ -23,151 +16,8 @@ const rankingEl = $("ranking");
 const aiBriefEl = $("ai-brief");
 const catalogGridEl = $("catalog-grid");
 const catalogMetaEl = $("catalog-meta");
-const settingsModalEl = $("settings-modal");
-const settingsProviderEl = $("settings-llm-provider");
-const settingsModelEl = $("settings-llm-model");
-const settingsOpenAiKeyEl = $("settings-openai-key");
-const settingsGeminiKeyEl = $("settings-gemini-key");
-const settingsOpenAiWrapEl = $("settings-openai-wrap");
-const settingsGeminiWrapEl = $("settings-gemini-wrap");
-const settingsValidationEl = $("settings-validation");
-
-function maskSecret(secret) {
-  if (!secret) return "nao configurada";
-  if (secret.length <= 8) return `${secret.slice(0, 2)}****`;
-  return `${secret.slice(0, 4)}****${secret.slice(-4)}`;
-}
-
-function setInputValidationState(inputEl, isValid, enabled = true) {
-  inputEl.classList.remove("border-emerald-400/70", "border-rose-400/70", "border-white/10");
-  if (!enabled) {
-    inputEl.classList.add("border-white/10");
-    return;
-  }
-  inputEl.classList.add(isValid ? "border-emerald-400/70" : "border-rose-400/70");
-}
-
-function loadSettingsFromStorage() {
-  try {
-    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-    state.llmSettings = {
-      llmProvider: parsed.llmProvider || "none",
-      llmModel: parsed.llmModel || "",
-      openaiApiKey: parsed.openaiApiKey || "",
-      geminiApiKey: parsed.geminiApiKey || "",
-    };
-  } catch (_e) {
-    localStorage.removeItem(SETTINGS_STORAGE_KEY);
-  }
-}
-
-function persistSettings() {
-  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state.llmSettings));
-}
-
-function evaluateLlmSettings(settings) {
-  if (settings.llmProvider === "none") {
-    return { valid: true, message: "Modo deterministico ativo.", level: "info" };
-  }
-  if (!settings.llmModel || settings.llmModel.length < 3) {
-    return { valid: false, message: "Modelo invalido. Minimo de 3 caracteres.", level: "error" };
-  }
-  if (settings.llmProvider === "openai") {
-    const key = settings.openaiApiKey.trim();
-    const valid = /^sk-[A-Za-z0-9_-]{20,}$/.test(key);
-    return valid
-      ? { valid: true, message: `OpenAI key valida (${maskSecret(key)}).`, level: "success" }
-      : { valid: false, message: "OpenAI key invalida. Esperado prefixo sk-.", level: "error" };
-  }
-  if (settings.llmProvider === "gemini") {
-    const key = settings.geminiApiKey.trim();
-    const valid = /^AIza[A-Za-z0-9_-]{20,}$/.test(key);
-    return valid
-      ? { valid: true, message: `Gemini key valida (${maskSecret(key)}).`, level: "success" }
-      : { valid: false, message: "Gemini key invalida. Esperado prefixo AIza.", level: "error" };
-  }
-  return { valid: false, message: "Provedor IA invalido.", level: "error" };
-}
-
-function updateLlmStateBadge() {
-  const evaluation = evaluateLlmSettings(state.llmSettings);
-  if (state.llmSettings.llmProvider === "none") {
-    llmStateEl.textContent = "IA: Deterministico";
-    llmStateEl.className =
-      "rounded-lg border border-white/10 bg-slate-950/60 px-3 py-1 text-xs text-slate-300";
-    return;
-  }
-  const providerLabel = state.llmSettings.llmProvider === "openai" ? "GPT" : "Gemini";
-  llmStateEl.textContent = evaluation.valid ? `IA: ${providerLabel} configurado` : `IA: ${providerLabel} invalido`;
-  llmStateEl.className = evaluation.valid
-    ? "rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300"
-    : "rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-1 text-xs text-rose-300";
-}
-
-function syncSettingsInputsFromState() {
-  settingsProviderEl.value = state.llmSettings.llmProvider;
-  settingsModelEl.value = state.llmSettings.llmModel;
-  settingsOpenAiKeyEl.value = state.llmSettings.openaiApiKey;
-  settingsGeminiKeyEl.value = state.llmSettings.geminiApiKey;
-}
-
-function readSettingsInputs() {
-  return {
-    llmProvider: settingsProviderEl.value,
-    llmModel: settingsModelEl.value.trim(),
-    openaiApiKey: settingsOpenAiKeyEl.value.trim(),
-    geminiApiKey: settingsGeminiKeyEl.value.trim(),
-  };
-}
-
-function updateSettingsFieldVisibility(provider) {
-  const openAiEnabled = provider === "openai";
-  const geminiEnabled = provider === "gemini";
-  settingsOpenAiKeyEl.disabled = !openAiEnabled;
-  settingsGeminiKeyEl.disabled = !geminiEnabled;
-  settingsOpenAiWrapEl.classList.toggle("opacity-40", !openAiEnabled);
-  settingsGeminiWrapEl.classList.toggle("opacity-40", !geminiEnabled);
-}
-
-function renderSettingsValidation(evaluation, draft) {
-  const validationClass =
-    evaluation.level === "success"
-      ? "rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-200"
-      : evaluation.level === "error"
-        ? "rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-xs text-rose-200"
-        : "rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-xs text-slate-300";
-  settingsValidationEl.className = validationClass;
-  settingsValidationEl.textContent = evaluation.message;
-
-  const keyToValidate = draft.llmProvider === "gemini" ? settingsGeminiKeyEl : settingsOpenAiKeyEl;
-  const otherKey = draft.llmProvider === "gemini" ? settingsOpenAiKeyEl : settingsGeminiKeyEl;
-
-  setInputValidationState(settingsModelEl, draft.llmProvider === "none" || draft.llmModel.length >= 3);
-  setInputValidationState(keyToValidate, draft.llmProvider === "none" || evaluation.valid, draft.llmProvider !== "none");
-  setInputValidationState(otherKey, true, false);
-}
-
-function validateSettingsUi() {
-  const draft = readSettingsInputs();
-  updateSettingsFieldVisibility(draft.llmProvider);
-  const evaluation = evaluateLlmSettings(draft);
-  renderSettingsValidation(evaluation, draft);
-  return { draft, evaluation };
-}
-
-function openSettingsModal() {
-  syncSettingsInputsFromState();
-  validateSettingsUi();
-  settingsModalEl.classList.remove("hidden");
-  settingsModalEl.classList.add("flex");
-}
-
-function closeSettingsModal() {
-  settingsModalEl.classList.add("hidden");
-  settingsModalEl.classList.remove("flex");
-}
+const backofficeLinkEl = $("backoffice-link");
+const logoutBtnEl = $("logout-btn");
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
@@ -182,6 +32,63 @@ function authHeaders() {
   };
 }
 
+function saveToken(token) {
+  state.token = token;
+  if (token) {
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+  }
+}
+
+function loadTokenFromUrlOrStorage() {
+  const url = new URL(window.location.href);
+  const token = url.searchParams.get("token");
+  const pending = url.searchParams.get("pending");
+
+  if (token) {
+    saveToken(token);
+    url.searchParams.delete("token");
+    window.history.replaceState({}, "", url.pathname);
+  } else {
+    saveToken(localStorage.getItem(AUTH_TOKEN_KEY));
+  }
+
+  if (pending) {
+    setStatus("Acesso pendente. Aguarde aprovacao do administrador CloudHelm.", true);
+    url.searchParams.delete("pending");
+    window.history.replaceState({}, "", url.pathname);
+  }
+}
+
+async function refreshSession() {
+  if (!state.token) {
+    state.session = null;
+    authStateEl.textContent = "Nao autenticado";
+    backofficeLinkEl.classList.add("hidden");
+    logoutBtnEl.classList.add("hidden");
+    return;
+  }
+
+  const res = await fetch("/api/auth/session", { headers: authHeaders() });
+  if (!res.ok) {
+    saveToken(null);
+    state.session = null;
+    authStateEl.textContent = "Sessao expirada";
+    backofficeLinkEl.classList.add("hidden");
+    logoutBtnEl.classList.add("hidden");
+    return;
+  }
+  state.session = await res.json();
+  authStateEl.textContent = `Autenticado: ${state.session.email}`;
+  logoutBtnEl.classList.remove("hidden");
+  if (state.session.is_admin) {
+    backofficeLinkEl.classList.remove("hidden");
+  } else {
+    backofficeLinkEl.classList.add("hidden");
+  }
+}
+
 function renderArchitecture(analysis) {
   const modules = analysis.architecture.modules || [];
   architectureEl.innerHTML = modules
@@ -189,8 +96,8 @@ function renderArchitecture(analysis) {
       (m) => `
       <div class="rounded-xl border border-white/10 bg-slate-950/50 p-3">
         <p class="text-sm font-semibold text-brand-200">${m.name}</p>
-        <p class="text-xs text-slate-300 mt-1">${m.role}</p>
-        <p class="text-[11px] text-slate-400 mt-2"><span class="text-slate-200">Calls:</span> ${m.calls}</p>
+        <p class="mt-1 text-xs text-slate-300">${m.role}</p>
+        <p class="mt-2 text-[11px] text-slate-400"><span class="text-slate-200">Calls:</span> ${m.calls}</p>
         <p class="text-[11px] text-slate-400"><span class="text-slate-200">Returns:</span> ${m.returns}</p>
       </div>
     `
@@ -203,7 +110,7 @@ function renderCosts(analysis) {
   const selected = analysis.provider;
   costsEl.innerHTML = `
     <div class="rounded-xl border border-white/10 bg-slate-950/50 p-3">
-      <p class="text-sm font-semibold mb-2">Comparativo mensal (USD)</p>
+      <p class="mb-2 text-sm font-semibold">Comparativo mensal (USD)</p>
       ${Object.entries(rows)
         .map(([provider, values]) => {
           const isSelected = provider === selected;
@@ -240,7 +147,6 @@ function renderRanking(analysis) {
     <div class="rounded-xl border border-brand-400/30 bg-brand-950/20 p-3">
       <p class="text-sm font-semibold text-brand-200">Ranking Inteligente de Provider</p>
       <p class="mt-1 text-[11px] text-slate-300">Recomendado: <span class="font-semibold text-emerald-300">${ranking.recommended_provider?.toUpperCase() || "-"}</span></p>
-      <p class="text-[11px] text-slate-400">${ranking.method || ""}</p>
       <div class="mt-3 space-y-2">
         ${items
           .map(
@@ -263,19 +169,13 @@ function renderAIBrief(analysis) {
     aiBriefEl.innerHTML = "";
     return;
   }
-  const providerLabel =
-    ai.provider === "openai"
-      ? "GPT"
-      : ai.provider === "gemini"
-        ? "Gemini"
-        : "Deterministico";
+  const providerLabel = ai.provider === "openai" ? "Engine Interna GPT" : ai.provider === "gemini" ? "Engine Interna Gemini" : "Deterministico";
   const badgeClass = ai.used_fallback ? "text-amber-300" : "text-emerald-300";
-
   aiBriefEl.innerHTML = `
     <div class="rounded-xl border border-white/10 bg-slate-950/55 p-3">
       <p class="text-sm font-semibold text-brand-200">Brief IA da Arquitetura</p>
       <p class="mt-1 text-[11px] text-slate-300">
-        Engine: <span class="${badgeClass} font-semibold">${providerLabel}</span> | Modelo: <span class="text-slate-200">${ai.model || "-"}</span>
+        Engine: <span class="${badgeClass} font-semibold">${providerLabel}</span>
       </p>
       <p class="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-200">${ai.brief}</p>
     </div>
@@ -321,53 +221,6 @@ function applyCatalogFilter() {
   catalogMetaEl.textContent = `Itens exibidos: ${filtered.length} / ${state.catalog.length}`;
 }
 
-async function register() {
-  const payload = {
-    name: $("register-name").value.trim(),
-    email: $("register-email").value.trim(),
-    password: $("register-password").value.trim(),
-  };
-  if (!payload.name || !payload.email || !payload.password) {
-    setStatus("Preencha nome, email e senha para registrar.", true);
-    return;
-  }
-  const res = await fetch("/api/auth/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    setStatus("Falha no registro. Verifique email e senha.", true);
-    return;
-  }
-  setStatus("Usuario registrado com sucesso.");
-}
-
-async function login() {
-  const payload = {
-    email: $("register-email").value.trim(),
-    password: $("register-password").value.trim(),
-  };
-  if (!payload.email || !payload.password) {
-    setStatus("Informe email e senha para login.", true);
-    return;
-  }
-  const res = await fetch("/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    setStatus("Credenciais invalidas.", true);
-    return;
-  }
-  const data = await res.json();
-  state.token = data.access_token;
-  state.userEmail = payload.email;
-  authStateEl.textContent = `Autenticado: ${state.userEmail}`;
-  setStatus("Login concluido.");
-}
-
 async function loadCatalog() {
   const provider = $("catalog-provider-filter").value;
   const search = $("catalog-search").value.trim();
@@ -382,7 +235,7 @@ async function loadCatalog() {
 
 async function syncCatalog() {
   if (!state.token) {
-    setStatus("Faca login para sincronizar o catalogo.", true);
+    setStatus("Faca login com GitHub para sincronizar o catalogo.", true);
     return;
   }
   setStatus("Sincronizando catalogo cloud...");
@@ -406,9 +259,28 @@ async function syncCatalog() {
   await loadCatalog();
 }
 
+async function loginWithGithub() {
+  const res = await fetch("/api/auth/github/url");
+  if (!res.ok) {
+    setStatus("GitHub OAuth nao configurado no servidor.", true);
+    return;
+  }
+  const data = await res.json();
+  window.location.href = data.auth_url;
+}
+
+function logout() {
+  saveToken(null);
+  state.session = null;
+  backofficeLinkEl.classList.add("hidden");
+  logoutBtnEl.classList.add("hidden");
+  authStateEl.textContent = "Nao autenticado";
+  setStatus("Sessao encerrada.");
+}
+
 async function orchestrate() {
   if (!state.token) {
-    setStatus("Faca login antes de orquestrar a demanda.", true);
+    setStatus("Faca login com GitHub antes de orquestrar.", true);
     return;
   }
 
@@ -416,22 +288,7 @@ async function orchestrate() {
   let rawInput = $("demand-input").value.trim();
   let inputType = "text";
   const provider = $("provider").value;
-  const llmProvider = state.llmSettings.llmProvider;
-  const llmModel = state.llmSettings.llmModel || null;
-  const llmApiKey =
-    llmProvider === "openai"
-      ? state.llmSettings.openaiApiKey || null
-      : llmProvider === "gemini"
-        ? state.llmSettings.geminiApiKey || null
-        : null;
   const fileInput = $("demand-file");
-
-  const llmEvaluation = evaluateLlmSettings(state.llmSettings);
-  if (llmProvider !== "none" && !llmEvaluation.valid) {
-    setStatus("Settings IA invalido. Clique em 'Settings IA' e valide sua chave.", true);
-    openSettingsModal();
-    return;
-  }
 
   if (fileInput.files.length > 0 && !rawInput) {
     setStatus("Transcrevendo audio...");
@@ -470,6 +327,10 @@ async function orchestrate() {
     }),
   });
   if (!createRes.ok) {
+    if (createRes.status === 403) {
+      setStatus("Usuario aguardando aprovacao do administrador.", true);
+      return;
+    }
     setStatus("Falha ao criar demanda.", true);
     return;
   }
@@ -479,14 +340,13 @@ async function orchestrate() {
   const orchestrationRes = await fetch(`/api/demands/${demand.id}/orchestrate`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({
-      provider,
-      llm_provider: llmProvider,
-      llm_model: llmModel,
-      llm_api_key: llmApiKey,
-    }),
+    body: JSON.stringify({ provider }),
   });
   if (!orchestrationRes.ok) {
+    if (orchestrationRes.status === 403) {
+      setStatus("Usuario aguardando aprovacao do administrador.", true);
+      return;
+    }
     setStatus("Falha na orquestracao.", true);
     return;
   }
@@ -502,7 +362,7 @@ async function orchestrate() {
 
 async function transcribeAudio() {
   if (!state.token) {
-    setStatus("Faca login para transcrever audio.", true);
+    setStatus("Faca login com GitHub para transcrever audio.", true);
     return;
   }
   const fileInput = $("demand-file");
@@ -527,58 +387,14 @@ async function transcribeAudio() {
   setStatus(`Transcricao concluida via ${data.source} (${data.model}).`);
 }
 
-function initSettingsUi() {
-  loadSettingsFromStorage();
-  updateLlmStateBadge();
-  syncSettingsInputsFromState();
-  validateSettingsUi();
-}
-
-$("register-btn").addEventListener("click", register);
-$("login-btn").addEventListener("click", login);
+$("login-github-btn").addEventListener("click", loginWithGithub);
+$("logout-btn").addEventListener("click", logout);
 $("orchestrate-btn").addEventListener("click", orchestrate);
 $("transcribe-btn").addEventListener("click", transcribeAudio);
 $("catalog-sync-btn").addEventListener("click", syncCatalog);
 $("catalog-provider-filter").addEventListener("change", loadCatalog);
 $("catalog-search").addEventListener("input", applyCatalogFilter);
-$("open-settings-btn").addEventListener("click", openSettingsModal);
-$("close-settings-btn").addEventListener("click", closeSettingsModal);
-$("test-settings-btn").addEventListener("click", () => {
-  const { evaluation } = validateSettingsUi();
-  setStatus(evaluation.message, !evaluation.valid);
-});
-$("save-settings-btn").addEventListener("click", () => {
-  const { draft, evaluation } = validateSettingsUi();
-  if (!evaluation.valid) {
-    setStatus("Nao foi possivel salvar. Corrija os campos de Settings IA.", true);
-    return;
-  }
-  state.llmSettings = draft;
-  persistSettings();
-  updateLlmStateBadge();
-  setStatus("Settings IA salvos localmente.");
-  closeSettingsModal();
-});
-$("clear-settings-btn").addEventListener("click", () => {
-  state.llmSettings = {
-    llmProvider: "none",
-    llmModel: "",
-    openaiApiKey: "",
-    geminiApiKey: "",
-  };
-  persistSettings();
-  syncSettingsInputsFromState();
-  validateSettingsUi();
-  updateLlmStateBadge();
-  setStatus("Settings IA limpos.");
-});
-settingsProviderEl.addEventListener("change", validateSettingsUi);
-settingsModelEl.addEventListener("input", validateSettingsUi);
-settingsOpenAiKeyEl.addEventListener("input", validateSettingsUi);
-settingsGeminiKeyEl.addEventListener("input", validateSettingsUi);
-settingsModalEl.addEventListener("click", (event) => {
-  if (event.target === settingsModalEl) closeSettingsModal();
-});
 
-initSettingsUi();
+loadTokenFromUrlOrStorage();
+refreshSession();
 loadCatalog();

@@ -42,7 +42,8 @@ Windows PowerShell (if `docker` is not in PATH):
 
 ## Main Features (V1)
 
-- Login/register with JWT
+- GitHub OAuth login with admin approval gate
+- Backoffice admin panel for LLM provider/model/API keys
 - Demand input (text/audio transcript as text payload)
 - Cloud provider selection (AWS, GCP, Azure)
 - Modular architecture and monthly cost view
@@ -66,6 +67,13 @@ Windows PowerShell (if `docker` is not in PATH):
 - `POST /api/catalog/sync`
 - `GET /api/catalog/items`
 - `GET /api/catalog/summary`
+- `GET /api/auth/github/url`
+- `GET /api/auth/github/callback`
+- `GET /api/backoffice/users`
+- `POST /api/backoffice/users/{id}/approve`
+- `POST /api/backoffice/users/{id}/revoke`
+- `GET /api/backoffice/llm-config`
+- `PUT /api/backoffice/llm-config`
 
 ## V1.1 Notes
 

@@ -21,3 +21,15 @@ class UserResponse(BaseModel):
     id: int
     name: str
     email: EmailStr
+
+
+class GithubAuthUrlResponse(BaseModel):
+    auth_url: str
+
+
+class SessionResponse(BaseModel):
+    id: int
+    name: str
+    email: EmailStr
+    is_admin: bool
+    is_approved: bool

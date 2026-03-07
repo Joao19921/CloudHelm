@@ -4,14 +4,15 @@ import time
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from sqlalchemy.exc import OperationalError
 
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
-from app.models import CloudCatalogItem, Demand, User  # noqa: F401
+from app.models import AppSetting, CloudCatalogItem, Demand, User  # noqa: F401
 from app.routers.auth import router as auth_router
+from app.routers.backoffice import router as backoffice_router
 from app.routers.catalog import router as catalog_router
 from app.routers.demands import router as demands_router
 from app.routers.ui import router as ui_router
@@ -50,10 +51,63 @@ def wait_for_database(max_attempts: int = 20, delay_seconds: int = 2) -> None:
             time.sleep(delay_seconds)
 
 
+def ensure_users_schema_columns() -> None:
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+    existing_columns = {column["name"] for column in inspector.get_columns("users")}
+    dialect = engine.dialect.name.lower()
+
+    migrations: list[str] = []
+    if "auth_provider" not in existing_columns:
+        migrations.append("ALTER TABLE users ADD COLUMN auth_provider VARCHAR(20) DEFAULT 'local'")
+    if "github_id" not in existing_columns:
+        migrations.append("ALTER TABLE users ADD COLUMN github_id VARCHAR(64) NULL")
+    if "github_login" not in existing_columns:
+        migrations.append("ALTER TABLE users ADD COLUMN github_login VARCHAR(120) NULL")
+    if "is_admin" not in existing_columns:
+        migrations.append(
+            "ALTER TABLE users ADD COLUMN is_admin TINYINT(1) DEFAULT 0"
+            if dialect == "mysql"
+            else "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0"
+        )
+    if "is_approved" not in existing_columns:
+        migrations.append(
+            "ALTER TABLE users ADD COLUMN is_approved TINYINT(1) DEFAULT 0"
+            if dialect == "mysql"
+            else "ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT 0"
+        )
+
+    with engine.begin() as connection:
+        for statement in migrations:
+            connection.execute(text(statement))
+        connection.execute(text("UPDATE users SET auth_provider='local' WHERE auth_provider IS NULL"))
+        approved_count = connection.execute(
+            text("SELECT COUNT(*) FROM users WHERE is_approved = 1")
+        ).scalar()
+        if int(approved_count or 0) == 0:
+            if dialect == "mysql":
+                connection.execute(
+                    text(
+                        "UPDATE users u "
+                        "JOIN (SELECT id FROM users ORDER BY id ASC LIMIT 1) seed ON u.id = seed.id "
+                        "SET u.is_approved = 1, u.is_admin = 1"
+                    )
+                )
+            else:
+                connection.execute(
+                    text(
+                        "UPDATE users SET is_approved = 1, is_admin = 1 "
+                        "WHERE id = (SELECT id FROM users ORDER BY id ASC LIMIT 1)"
+                    )
+                )
+
+
 @app.on_event("startup")
 def startup() -> None:
     wait_for_database()
     Base.metadata.create_all(bind=engine)
+    ensure_users_schema_columns()
 
 
 @app.get("/health")
@@ -65,3 +119,4 @@ app.include_router(ui_router)
 app.include_router(auth_router)
 app.include_router(demands_router)
 app.include_router(catalog_router)
+app.include_router(backoffice_router)

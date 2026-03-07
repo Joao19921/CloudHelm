@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
+from app.repositories.app_settings_repository import get_llm_runtime_config
 from app.repositories.catalog_repository import providers_summary
 from app.repositories.demand_repository import (
     create_demand,
@@ -101,13 +102,21 @@ def orchestrate_demand_api(
     if not demand:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demand not found.")
 
+    llm_config = get_llm_runtime_config(db)
+    llm_provider = llm_config.get("provider", "none")
+    llm_api_key = None
+    if llm_provider == "openai":
+        llm_api_key = llm_config.get("openai_api_key", "")
+    elif llm_provider == "gemini":
+        llm_api_key = llm_config.get("gemini_api_key", "")
+
     result = orchestrate_demand(
         raw_input=demand.raw_input,
         provider=payload.provider,
         catalog_summary=providers_summary(db),
-        llm_provider=payload.llm_provider,
-        llm_api_key=payload.llm_api_key,
-        llm_model=payload.llm_model,
+        llm_provider=llm_provider,
+        llm_api_key=llm_api_key,
+        llm_model=llm_config.get("model") or None,
     )
     save_orchestration_result(
         db=db,

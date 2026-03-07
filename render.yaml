@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: cloudhelm-platform
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /health
+    dockerfilePath: ./platform-v1/backend/Dockerfile
+    dockerContext: ./platform-v1/backend
+    envVars:
+      - key: APP_NAME
+        value: CloudHelm
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "120"
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        value: sqlite:////var/data/cloudhelm.db
+      - key: OPENAI_CHAT_MODEL
+        value: gpt-4o-mini
+      - key: GEMINI_MODEL
+        value: gemini-1.5-flash
+      - key: TRANSCRIBE_MODEL
+        value: whisper-1
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_REDIRECT_URI
+        sync: false
+      - key: GITHUB_ADMIN_LOGINS
+        sync: false
+    disk:
+      name: cloudhelm-data
+      mountPath: /var/data
+      sizeGB: 1

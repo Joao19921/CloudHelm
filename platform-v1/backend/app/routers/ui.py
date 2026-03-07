@@ -9,3 +9,8 @@ router = APIRouter(tags=["ui"])
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+
+@router.get("/backoffice", response_class=HTMLResponse)
+def backoffice(request: Request):
+    return templates.TemplateResponse("backoffice.html", {"request": request})
