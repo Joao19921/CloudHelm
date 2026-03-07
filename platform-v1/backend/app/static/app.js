@@ -12,6 +12,7 @@ const architectureEl = $("architecture");
 const costsEl = $("costs");
 const terraformEl = $("terraform-modules");
 const rankingEl = $("ranking");
+const aiBriefEl = $("ai-brief");
 const catalogGridEl = $("catalog-grid");
 const catalogMetaEl = $("catalog-meta");
 
@@ -99,6 +100,31 @@ function renderRanking(analysis) {
           )
           .join("")}
       </div>
+    </div>
+  `;
+}
+
+function renderAIBrief(analysis) {
+  const ai = analysis.ai || analysis.architecture?.ai || {};
+  if (!ai || !ai.brief) {
+    aiBriefEl.innerHTML = "";
+    return;
+  }
+  const providerLabel =
+    ai.provider === "openai"
+      ? "GPT"
+      : ai.provider === "gemini"
+        ? "Gemini"
+        : "Deterministico";
+  const badgeClass = ai.used_fallback ? "text-amber-300" : "text-emerald-300";
+
+  aiBriefEl.innerHTML = `
+    <div class="rounded-xl border border-white/10 bg-slate-950/55 p-3">
+      <p class="text-sm font-semibold text-brand-200">Brief IA da Arquitetura</p>
+      <p class="mt-1 text-[11px] text-slate-300">
+        Engine: <span class="${badgeClass} font-semibold">${providerLabel}</span> | Modelo: <span class="text-slate-200">${ai.model || "-"}</span>
+      </p>
+      <p class="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-200">${ai.brief}</p>
     </div>
   `;
 }
@@ -237,6 +263,9 @@ async function orchestrate() {
   let rawInput = $("demand-input").value.trim();
   let inputType = "text";
   const provider = $("provider").value;
+  const llmProvider = $("llm-provider").value;
+  const llmModel = $("llm-model").value.trim();
+  const llmApiKey = $("llm-api-key").value.trim();
   const fileInput = $("demand-file");
 
   if (fileInput.files.length > 0 && !rawInput) {
@@ -285,7 +314,12 @@ async function orchestrate() {
   const orchestrationRes = await fetch(`/api/demands/${demand.id}/orchestrate`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ provider }),
+    body: JSON.stringify({
+      provider,
+      llm_provider: llmProvider,
+      llm_model: llmModel || null,
+      llm_api_key: llmApiKey || null,
+    }),
   });
   if (!orchestrationRes.ok) {
     setStatus("Falha na orquestracao.", true);
@@ -294,6 +328,7 @@ async function orchestrate() {
   const analysis = await orchestrationRes.json();
 
   renderArchitecture(analysis);
+  renderAIBrief(analysis);
   renderCosts(analysis);
   renderTerraform(analysis);
   renderRanking(analysis);

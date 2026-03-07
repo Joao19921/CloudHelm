@@ -105,6 +105,9 @@ def orchestrate_demand_api(
         raw_input=demand.raw_input,
         provider=payload.provider,
         catalog_summary=providers_summary(db),
+        llm_provider=payload.llm_provider,
+        llm_api_key=payload.llm_api_key,
+        llm_model=payload.llm_model,
     )
     save_orchestration_result(
         db=db,
@@ -121,6 +124,7 @@ def orchestrate_demand_api(
         costs=result["costs"],
         terraform=result["terraform"],
         ranking=result["ranking"],
+        ai=result["ai"],
     )
 
 

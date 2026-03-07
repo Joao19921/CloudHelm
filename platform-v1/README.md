@@ -45,6 +45,7 @@ docker compose up --build
 - Fuzzy icon matching and static JSON export (`dist_cloud_data/cloud_master_data.json`)
 - Audio upload + automatic transcription endpoint
 - Provider ranking engine (cost + SLA + catalog signal)
+- Multi-LLM POC: choose GPT or Gemini by API key at orchestration time
 
 ## API Overview
 
@@ -65,6 +66,7 @@ docker compose up --build
 - Automatic transcription uses OpenAI when `OPENAI_API_KEY` is configured.
 - Without key, the system uses local fallback transcript text to keep flow running.
 - Provider ranking is returned in orchestration response (`ranking` field).
+- Orchestration accepts optional `llm_provider`, `llm_model`, and `llm_api_key`.
 
 ## Cloud Catalog Job
 

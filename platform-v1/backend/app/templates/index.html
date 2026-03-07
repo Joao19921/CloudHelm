@@ -107,6 +107,27 @@
           </select>
 
           <div class="mt-6 space-y-3">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-200/80">LLM (POC GPT/Gemini)</p>
+            <select
+              id="llm-provider"
+              class="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 outline-none focus:border-brand-400"
+            >
+              <option value="none">Deterministico (sem IA)</option>
+              <option value="openai">OpenAI (GPT)</option>
+              <option value="gemini">Google Gemini</option>
+            </select>
+            <input
+              id="llm-model"
+              placeholder="Modelo (ex.: gpt-4o-mini ou gemini-1.5-flash)"
+              class="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 outline-none focus:border-brand-400"
+            />
+            <input
+              id="llm-api-key"
+              type="password"
+              placeholder="API Key (nao persistida)"
+              class="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 outline-none focus:border-brand-400"
+            />
+
             <input
               id="register-name"
               placeholder="Nome"
@@ -148,6 +169,7 @@
         <div class="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
           <h2 class="text-lg font-semibold">4) Arquitetura e Custos</h2>
           <p class="text-sm text-slate-300 mt-1">Componentes, fluxo e comparativo mensal.</p>
+          <div id="ai-brief" class="mt-4"></div>
           <div id="ranking" class="mt-4"></div>
           <div id="architecture" class="mt-4 space-y-3"></div>
           <div id="costs" class="mt-4"></div>

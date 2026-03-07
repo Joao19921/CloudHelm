@@ -63,6 +63,9 @@ Obrigatorias:
 Opcionais:
 
 - `OPENAI_API_KEY=` para transcricao real de audio
+- `GEMINI_API_KEY=` para analise de arquitetura via Gemini
+- `OPENAI_CHAT_MODEL=gpt-4o-mini`
+- `GEMINI_MODEL=gemini-1.5-flash`
 - `TRANSCRIBE_MODEL=whisper-1`
 
 ## 5) Subir com Docker (recomendado)
@@ -83,7 +86,8 @@ Acessar:
 3. (Opcional) Sincronizar catalogo cloud em `Catalogo Cloud Providers`.
 4. Enviar demanda em texto ou audio.
 5. Se audio, usar `Transcrever Audio Automaticamente`.
-6. Orquestrar com provider especifico ou `Auto (Ranking)`.
+6. (Opcional) Definir LLM: `OpenAI (GPT)` ou `Google Gemini`, preencher chave e modelo.
+7. Orquestrar com provider especifico ou `Auto (Ranking)`.
 
 ## 7) Rodar sem Docker (fallback)
 
@@ -134,6 +138,7 @@ Agendamento Linux (diario, meia-noite):
 - `POST /api/demands`
 - `POST /api/demands/transcribe`
 - `POST /api/demands/{id}/orchestrate`
+  - body aceita: `provider`, `llm_provider`, `llm_model`, `llm_api_key`
 - `GET /api/catalog/items`
 - `POST /api/catalog/sync`
 - `GET /api/catalog/summary`

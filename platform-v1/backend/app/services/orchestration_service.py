@@ -1,5 +1,6 @@
 from typing import Any
 
+from app.services.llm_service import LLMService
 from app.services.terraform_service import build_terraform_modules
 
 
@@ -16,7 +17,7 @@ def _build_agent_tasks() -> list[dict[str, str]]:
     ]
 
 
-def _build_architecture(raw_input: str, provider: str) -> dict[str, Any]:
+def _build_architecture(raw_input: str, provider: str, ai: dict[str, Any]) -> dict[str, Any]:
     modules = [
         {
             "name": "Input Gateway",
@@ -62,6 +63,7 @@ def _build_architecture(raw_input: str, provider: str) -> dict[str, Any]:
         "availability_targets": {"rto_minutes": 15, "rpo_minutes": 15},
         "modules": modules,
         "agent_tasks": _build_agent_tasks(),
+        "ai": ai,
     }
 
 
@@ -142,6 +144,9 @@ def orchestrate_demand(
     raw_input: str,
     provider: str,
     catalog_summary: list[dict[str, Any]] | None = None,
+    llm_provider: str = "none",
+    llm_api_key: str | None = None,
+    llm_model: str | None = None,
 ) -> dict[str, Any]:
     costs = _build_costs()
     preferred_provider = provider if provider in {"aws", "gcp", "azure"} else None
@@ -152,7 +157,22 @@ def orchestrate_demand(
     )
     selected_provider = provider if provider in {"aws", "gcp", "azure"} else ranking["recommended_provider"]
 
-    architecture = _build_architecture(raw_input=raw_input, provider=selected_provider)
+    llm_result = LLMService.generate_brief(
+        raw_input=raw_input,
+        cloud_provider=selected_provider,
+        llm_provider=llm_provider,
+        llm_api_key=llm_api_key,
+        llm_model=llm_model,
+    )
+
+    ai_context = {
+        "provider": llm_result.provider,
+        "model": llm_result.model,
+        "used_fallback": llm_result.used_fallback,
+        "brief": llm_result.content,
+    }
+
+    architecture = _build_architecture(raw_input=raw_input, provider=selected_provider, ai=ai_context)
     terraform = build_terraform_modules(provider=selected_provider)
     return {
         "provider": selected_provider,
@@ -160,4 +180,5 @@ def orchestrate_demand(
         "costs": costs,
         "terraform": terraform,
         "ranking": ranking,
+        "ai": ai_context,
     }

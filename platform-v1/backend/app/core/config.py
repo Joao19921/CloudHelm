@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 120
     database_url: str = "sqlite:///./cloudhelm.db"
     openai_api_key: str | None = None
+    gemini_api_key: str | None = None
+    openai_chat_model: str = "gpt-4o-mini"
+    gemini_model: str = "gemini-1.5-flash"
     transcribe_model: str = "whisper-1"
 
     model_config = SettingsConfigDict(
