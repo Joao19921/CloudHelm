@@ -1,0 +1,38 @@
+services:
+  db:
+    image: mysql:8.4
+    container_name: agk-v1-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: antigravity
+      MYSQL_USER: antigravity
+      MYSQL_PASSWORD: antigravity
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: agk-v1-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+
+volumes:
+  mysql_data:
