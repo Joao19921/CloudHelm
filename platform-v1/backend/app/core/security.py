@@ -10,13 +10,20 @@ from app.core.config import settings
 ALGORITHM = "HS256"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# BCrypt has a 72-byte limit for passwords
+BCRYPT_MAX_LENGTH = 72
+
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    # Truncate password to BCrypt's maximum length
+    truncated = password[:BCRYPT_MAX_LENGTH]
+    return pwd_context.hash(truncated)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    # Truncate password to BCrypt's maximum length for consistency
+    truncated = plain_password[:BCRYPT_MAX_LENGTH]
+    return pwd_context.verify(truncated, hashed_password)
 
 
 def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:

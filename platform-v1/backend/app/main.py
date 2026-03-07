@@ -108,7 +108,16 @@ def ensure_users_schema_columns() -> None:
 def startup() -> None:
     wait_for_database()
     Base.metadata.create_all(bind=engine)
-    ensure_users_schema_columns()
+    try:
+        ensure_users_schema_columns()
+    except Exception as e:
+        logger.warning("Failed to ensure user schema columns: %s", e)
+    
+    # Log GitHub OAuth configuration status
+    if settings.github_client_id and settings.github_client_secret:
+        logger.info("GitHub OAuth is configured")
+    else:
+        logger.warning("GitHub OAuth is NOT configured. Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET to enable GitHub login.")
 
 
 @app.get("/health")
