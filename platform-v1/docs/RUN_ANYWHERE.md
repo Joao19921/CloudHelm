@@ -30,7 +30,7 @@ Required:
 - `APP_NAME=CloudHelm`
 - `SECRET_KEY=<strong-random-secret>`
 - `ACCESS_TOKEN_EXPIRE_MINUTES=120`
-- `DATABASE_URL=postgresql+psycopg://postgres:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres?sslmode=require`
+- `DATABASE_URL=postgresql+psycopg://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require`
 - `GITHUB_CLIENT_ID=<github-oauth-client-id>`
 - `GITHUB_CLIENT_SECRET=<github-oauth-client-secret>`
 - `GITHUB_REDIRECT_URI=http://localhost:8000/api/auth/github/callback`
