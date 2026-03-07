@@ -82,8 +82,9 @@ def ensure_users_schema_columns() -> None:
         for statement in migrations:
             connection.execute(text(statement))
         connection.execute(text("UPDATE users SET auth_provider='local' WHERE auth_provider IS NULL"))
+        approved_condition = "is_approved = 1" if dialect == "mysql" else "is_approved IS TRUE"
         approved_count = connection.execute(
-            text("SELECT COUNT(*) FROM users WHERE is_approved = 1")
+            text(f"SELECT COUNT(*) FROM users WHERE {approved_condition}")
         ).scalar()
         if int(approved_count or 0) == 0:
             if dialect == "mysql":
@@ -97,7 +98,7 @@ def ensure_users_schema_columns() -> None:
             else:
                 connection.execute(
                     text(
-                        "UPDATE users SET is_approved = 1, is_admin = 1 "
+                        "UPDATE users SET is_approved = TRUE, is_admin = TRUE "
                         "WHERE id = (SELECT id FROM users ORDER BY id ASC LIMIT 1)"
                     )
                 )
