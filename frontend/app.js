@@ -176,18 +176,13 @@ function renderAIBrief(analysis) {
     aiBriefEl.innerHTML = "";
     return;
   }
-  const providerLabel =
-    ai.provider === "openai"
-      ? "Engine Interna GPT"
-      : ai.provider === "gemini"
-        ? "Engine Interna Gemini"
-        : "Deterministico";
+  const providerLabel = ai.provider === "none" ? "Padrao" : "Avancado";
   const badgeClass = ai.used_fallback ? "text-amber-300" : "text-emerald-300";
   aiBriefEl.innerHTML = `
     <div class="rounded-xl border border-white/10 bg-slate-950/55 p-3">
-      <p class="text-sm font-semibold text-brand-200">Brief IA da Arquitetura</p>
+      <p class="text-sm font-semibold text-brand-200">Resumo de Arquitetura</p>
       <p class="mt-1 text-[11px] text-slate-300">
-        Engine: <span class="${badgeClass} font-semibold">${providerLabel}</span>
+        Processamento: <span class="${badgeClass} font-semibold">${providerLabel}</span>
       </p>
       <p class="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-200">${ai.brief}</p>
     </div>
