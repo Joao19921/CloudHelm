@@ -10,21 +10,18 @@
         theme: {
           extend: {
             fontFamily: {
-              display: ["Space Grotesk", "ui-sans-serif", "system-ui"],
+              sans: ["Inter", "ui-sans-serif", "system-ui"],
             },
             colors: {
-              brand: {
-                50: "#ecf8ff",
-                100: "#d7f0ff",
-                200: "#b0e1ff",
-                300: "#78caff",
-                400: "#38adff",
-                500: "#0a84ff",
-                600: "#0068de",
-                700: "#0653af",
-                800: "#0c477f",
-                900: "#0e3e68",
+              slatex: "#0a0a0a",
+              neon: {
+                blue: "#3b82f6",
+                cyan: "#22d3ee",
+                violet: "#8b5cf6",
               },
+            },
+            boxShadow: {
+              glow: "0 0 0 1px rgba(59,130,246,0.4), 0 10px 40px rgba(59,130,246,0.22)",
             },
           },
         },
@@ -33,31 +30,32 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
   </head>
-  <body class="min-h-screen bg-slate-950 text-slate-100 font-display">
-    <div class="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_12%_16%,rgba(10,132,255,0.38),transparent_42%),radial-gradient(circle_at_86%_8%,rgba(16,185,200,0.26),transparent_36%),linear-gradient(180deg,#020817,#0b1426_48%,#020617)]"></div>
+  <body class="min-h-screen bg-slatex font-sans text-slate-100">
+    <div class="fixed inset-0 -z-20 bg-[radial-gradient(circle_at_12%_18%,rgba(59,130,246,0.22),transparent_35%),radial-gradient(circle_at_88%_8%,rgba(139,92,246,0.18),transparent_30%),radial-gradient(circle_at_50%_100%,rgba(34,211,238,0.14),transparent_32%),linear-gradient(180deg,#020617,#0b1020_52%,#04070f)]"></div>
+    <div class="fixed inset-0 -z-10 backdrop-blur-[2px]"></div>
 
-    <header class="border-b border-white/10 bg-slate-900/40 backdrop-blur">
+    <header class="sticky top-0 z-50 border-b border-white/10 bg-slate-950/55 backdrop-blur-xl">
       <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <div class="flex items-center gap-3">
           <img
             src="./assets/brand/cloudhelm-logo.svg"
             alt="CloudHelm"
-            class="h-11 w-auto rounded-lg border border-white/10 bg-slate-950/70 p-1"
+            class="h-11 w-auto rounded-lg border border-white/10 bg-slate-950/80 p-1"
           />
           <div>
-            <p class="text-xs uppercase tracking-[0.25em] text-brand-200">CloudHelm</p>
-            <h1 class="text-xl font-bold">Control Plane - Orquestracao e Arquitetura</h1>
+            <p class="text-xs uppercase tracking-[0.24em] text-cyan-300">CloudHelm</p>
+            <h1 class="text-lg font-bold">Cloud Architecture Control Plane</h1>
           </div>
         </div>
         <div class="flex items-center gap-2">
           <a
             id="backoffice-link"
             href="./backoffice.html"
-            class="hidden rounded-xl border border-brand-400/40 bg-brand-500/10 px-3 py-2 text-xs font-semibold text-brand-100 hover:bg-brand-500/25"
+            class="hidden rounded-xl border border-cyan-300/40 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/20"
           >
             Backoffice
           </a>
@@ -72,117 +70,214 @@
       </div>
     </header>
 
-    <main class="mx-auto max-w-7xl space-y-6 px-6 py-8">
-      <section class="grid gap-6 lg:grid-cols-3">
-        <div class="lg:col-span-2 rounded-2xl border border-white/10 bg-slate-900/60 p-6 shadow-2xl">
-          <h2 class="text-lg font-semibold">1) Input da Demanda</h2>
-          <p class="mt-1 text-sm text-slate-300">Envie transcricao/texto para iniciar a orquestracao.</p>
-          <div class="mt-4 space-y-3">
-            <input
-              id="demand-title"
-              placeholder="Titulo da demanda"
-              class="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 outline-none focus:border-brand-400"
-            />
-            <textarea
-              id="demand-input"
-              rows="10"
-              placeholder="Cole aqui a transcricao ou requisitos..."
-              class="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 outline-none focus:border-brand-400"
-            ></textarea>
-            <input
-              id="demand-file"
-              type="file"
-              accept="audio/*,video/mp4"
-              class="w-full rounded-xl border border-dashed border-white/20 bg-slate-950/50 px-4 py-3 text-sm"
-            />
-            <button
-              id="transcribe-btn"
-              class="w-full rounded-xl bg-white/10 py-2 text-sm font-semibold hover:bg-white/20"
-            >
-              Transcrever Audio Automaticamente
-            </button>
-          </div>
-        </div>
-
-        <div class="rounded-2xl border border-white/10 bg-slate-900/60 p-6 shadow-2xl">
-          <h2 class="text-lg font-semibold">2) Acesso e Provider</h2>
-          <p class="mt-1 text-sm text-slate-300">Login GitHub com aprovacao administrativa obrigatoria.</p>
-          <button
-            id="login-github-btn"
-            class="mt-4 w-full rounded-xl bg-brand-500 py-3 text-sm font-semibold text-slate-950 hover:bg-brand-400"
-          >
-            Entrar com GitHub
-          </button>
-          <select
-            id="provider"
-            class="mt-4 w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 outline-none focus:border-brand-400"
-          >
-            <option value="aws">AWS</option>
-            <option value="gcp">GCP</option>
-            <option value="azure">Azure</option>
-            <option value="auto">Auto (Ranking)</option>
-          </select>
-          <p class="mt-3 rounded-xl border border-brand-400/30 bg-brand-900/20 p-3 text-xs text-slate-200">
-            Configuracoes internas sao gerenciadas pela plataforma.
+    <main class="mx-auto max-w-7xl px-6 pb-24 pt-10">
+      <section class="grid items-center gap-12 lg:grid-cols-2">
+        <div>
+          <p class="inline-flex rounded-full border border-cyan-300/30 bg-cyan-400/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">
+            Multi-Cloud Architecture Studio
           </p>
-
-          <button
-            id="orchestrate-btn"
-            class="mt-5 w-full rounded-xl bg-gradient-to-r from-brand-500 to-sky-400 py-3 font-semibold text-slate-950 shadow-lg shadow-brand-700/40 transition hover:scale-[1.01]"
-          >
-            Orquestrar Demanda
-          </button>
-          <p id="status" class="mt-3 text-xs text-slate-300"></p>
-        </div>
-      </section>
-
-      <section class="grid gap-6 lg:grid-cols-2">
-        <div class="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
-          <h2 class="text-lg font-semibold">3) Scripts Terraform</h2>
-          <p class="mt-1 text-sm text-slate-300">Visualizacao modular dos scripts gerados.</p>
-          <div id="terraform-modules" class="mt-4 space-y-3"></div>
-        </div>
-        <div class="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
-          <h2 class="text-lg font-semibold">4) Arquitetura e Custos</h2>
-          <p class="mt-1 text-sm text-slate-300">Componentes, fluxo e comparativo mensal.</p>
-          <div id="ai-brief" class="mt-4"></div>
-          <div id="ranking" class="mt-4"></div>
-          <div id="architecture" class="mt-4 space-y-3"></div>
-          <div id="costs" class="mt-4"></div>
-        </div>
-      </section>
-
-      <section class="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 class="text-lg font-semibold">5) Catalogo Cloud Providers</h2>
-            <p class="mt-1 text-sm text-slate-300">Sincronize e pesquise servicos para apoiar comparacao de provedores.</p>
-          </div>
-          <div class="flex flex-col gap-2 sm:flex-row">
-            <select
-              id="catalog-provider-filter"
-              class="rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 text-sm outline-none focus:border-brand-400"
+          <h2 class="mt-6 text-4xl font-extrabold leading-tight text-white md:text-5xl">
+            Projete, Estime e Provisione sua Infraestrutura Cloud em Segundos com IA.
+          </h2>
+          <p class="mt-5 max-w-2xl text-lg leading-relaxed text-slate-300">
+            O CloudHelm transforma os requisitos do seu negocio em arquiteturas multi-cloud otimizadas e codigo Terraform pronto para producao. Elimine o trabalho manual e compare custos entre AWS, Google Cloud e Azure instantaneamente.
+          </p>
+          <div class="mt-8 flex flex-wrap gap-3">
+            <a
+              href="#workspace"
+              class="rounded-xl bg-gradient-to-r from-blue-500 via-cyan-400 to-violet-500 px-6 py-3 text-sm font-bold text-slate-950 shadow-glow transition hover:-translate-y-0.5"
             >
-              <option value="all">Todos</option>
+              Gerar Arquitetura
+            </a>
+            <a
+              href="#demo"
+              class="rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-slate-100 transition hover:border-cyan-300/60 hover:bg-cyan-300/10"
+            >
+              Ver Demonstracao
+            </a>
+          </div>
+        </div>
+        <div id="demo" class="relative">
+          <div class="absolute -left-10 -top-10 h-36 w-36 rounded-full bg-blue-500/20 blur-3xl"></div>
+          <div class="absolute -bottom-10 -right-6 h-36 w-36 rounded-full bg-violet-500/20 blur-3xl"></div>
+          <div class="space-y-4 rounded-2xl border border-white/15 bg-white/5 p-5 shadow-2xl backdrop-blur-xl">
+            <div class="rounded-xl border border-cyan-300/20 bg-slate-950/70 p-4">
+              <p class="text-xs uppercase tracking-[0.15em] text-cyan-200">CloudHelm Terminal</p>
+              <pre class="mt-2 overflow-x-auto text-xs leading-6 text-slate-300">$ ingest requisitos-reuniao.txt
+$ analyze --providers aws,gcp,azure
+$ rank --cost --availability
+$ terraform generate --modular</pre>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-4">
+                <p class="text-xs text-slate-400">Provider recomendado</p>
+                <p class="mt-1 text-xl font-bold text-cyan-300">AWS</p>
+              </div>
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-4">
+                <p class="text-xs text-slate-400">Custo mensal estimado</p>
+                <p class="mt-1 text-xl font-bold text-emerald-300">USD 25-70</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mt-12 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
+        <p class="text-center text-xs uppercase tracking-[0.2em] text-slate-400">Nativamente integrado aos lideres de mercado</p>
+        <div class="mt-4 flex flex-wrap items-center justify-center gap-6 text-sm font-semibold text-slate-300">
+          <span>AWS</span>
+          <span>Google Cloud</span>
+          <span>Microsoft Azure</span>
+          <span>HashiCorp Terraform</span>
+        </div>
+      </section>
+
+      <section class="mt-14">
+        <h3 class="text-center text-3xl font-bold text-white">Beneficios que aceleram seu time</h3>
+        <p class="mx-auto mt-3 max-w-3xl text-center text-slate-300">
+          Menos operacao manual, mais previsibilidade e velocidade para engenharia de plataforma.
+        </p>
+        <div class="mt-8 grid gap-5 md:grid-cols-2">
+          <article class="group rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-cyan-300/60 hover:shadow-glow">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Da reuniao para a nuvem</p>
+            <h4 class="mt-2 text-xl font-bold">Da Reuniao para a Nuvem</h4>
+            <p class="mt-3 text-sm leading-relaxed text-slate-300">Envie transcricoes de audio ou requisitos em texto e deixe que nossa inteligencia de plataforma desenhe a arquitetura perfeita para o seu contexto.</p>
+          </article>
+          <article class="group rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-cyan-300/60 hover:shadow-glow">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Previsibilidade de custos</p>
+            <h4 class="mt-2 text-xl font-bold">Previsibilidade Absoluta de Custos</h4>
+            <p class="mt-3 text-sm leading-relaxed text-slate-300">Compare o preco real da sua infraestrutura na AWS, GCP e Azure na mesma tela antes de investir um unico centavo.</p>
+          </article>
+          <article class="group rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-cyan-300/60 hover:shadow-glow">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">IaC pronto para deploy</p>
+            <h4 class="mt-2 text-xl font-bold">Infraestrutura Autogerada e Pronta</h4>
+            <p class="mt-3 text-sm leading-relaxed text-slate-300">Receba modulos limpos, escalaveis e documentados em Terraform. Prontos para o apply na sua esteira de automacao.</p>
+          </article>
+          <article class="group rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-cyan-300/60 hover:shadow-glow">
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Governanca multi-cloud</p>
+            <h4 class="mt-2 text-xl font-bold">Governanca e Controle Multi-Cloud</h4>
+            <p class="mt-3 text-sm leading-relaxed text-slate-300">Gerencie acessos via GitHub com aprovacao administrativa e pesquise servicos em tempo real em um catalogo inteligente.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="workspace" class="mt-16 space-y-6">
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+          <h3 class="text-xl font-bold">Workspace CloudHelm</h3>
+          <p class="mt-1 text-sm text-slate-300">Execute sua analise e gere os artefatos da arquitetura.</p>
+        </div>
+
+        <section class="grid gap-6 lg:grid-cols-3">
+          <div class="lg:col-span-2 rounded-2xl border border-white/10 bg-slate-900/60 p-6 shadow-2xl">
+            <h2 class="text-lg font-semibold">Entrada da Demanda</h2>
+            <p class="mt-1 text-sm text-slate-300">Envie transcricao/texto para iniciar a orquestracao.</p>
+            <div class="mt-4 space-y-3">
+              <input
+                id="demand-title"
+                placeholder="Titulo da demanda"
+                class="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 outline-none focus:border-cyan-300/60"
+              />
+              <textarea
+                id="demand-input"
+                rows="10"
+                placeholder="Cole aqui a transcricao ou requisitos..."
+                class="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 outline-none focus:border-cyan-300/60"
+              ></textarea>
+              <input
+                id="demand-file"
+                type="file"
+                accept="audio/*,video/mp4"
+                class="w-full rounded-xl border border-dashed border-white/20 bg-slate-950/50 px-4 py-3 text-sm"
+              />
+              <button
+                id="transcribe-btn"
+                class="w-full rounded-xl bg-white/10 py-2 text-sm font-semibold hover:bg-white/20"
+              >
+                Transcrever Audio Automaticamente
+              </button>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-white/10 bg-slate-900/60 p-6 shadow-2xl">
+            <h2 class="text-lg font-semibold">Execucao</h2>
+            <p class="mt-1 text-sm text-slate-300">Acesse com GitHub e selecione o provedor alvo.</p>
+            <button
+              id="login-github-btn"
+              class="mt-4 w-full rounded-xl bg-cyan-400 py-3 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+            >
+              Entrar com GitHub
+            </button>
+            <select
+              id="provider"
+              class="mt-4 w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 outline-none focus:border-cyan-300/60"
+            >
               <option value="aws">AWS</option>
               <option value="gcp">GCP</option>
               <option value="azure">Azure</option>
+              <option value="auto">Auto (Ranking)</option>
             </select>
-            <input
-              id="catalog-search"
-              placeholder="Pesquisar servico..."
-              class="rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 text-sm outline-none focus:border-brand-400"
-            />
+            <p class="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-300/10 p-3 text-xs text-slate-200">
+              Configuracoes internas sao gerenciadas pela plataforma.
+            </p>
+
             <button
-              id="catalog-sync-btn"
-              class="rounded-xl bg-brand-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-brand-400"
+              id="orchestrate-btn"
+              class="mt-5 w-full rounded-xl bg-gradient-to-r from-blue-500 via-cyan-400 to-violet-500 py-3 font-semibold text-slate-950 shadow-glow transition hover:-translate-y-0.5"
             >
-              Sincronizar Catalogo
+              Orquestrar Demanda
             </button>
+            <p id="status" class="mt-3 text-xs text-slate-300"></p>
           </div>
-        </div>
-        <p id="catalog-meta" class="mt-3 text-xs text-slate-300"></p>
-        <div id="catalog-grid" class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"></div>
+        </section>
+
+        <section class="grid gap-6 lg:grid-cols-2">
+          <div class="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
+            <h2 class="text-lg font-semibold">Terraform</h2>
+            <p class="mt-1 text-sm text-slate-300">Visualizacao modular dos scripts gerados.</p>
+            <div id="terraform-modules" class="mt-4 space-y-3"></div>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
+            <h2 class="text-lg font-semibold">Arquitetura e Custos</h2>
+            <p class="mt-1 text-sm text-slate-300">Componentes, fluxo e comparativo mensal.</p>
+            <div id="ai-brief" class="mt-4"></div>
+            <div id="ranking" class="mt-4"></div>
+            <div id="architecture" class="mt-4 space-y-3"></div>
+            <div id="costs" class="mt-4"></div>
+          </div>
+        </section>
+
+        <section class="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
+          <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold">Catalogo Cloud Providers</h2>
+              <p class="mt-1 text-sm text-slate-300">Sincronize e pesquise servicos para apoiar comparacao de provedores.</p>
+            </div>
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <select
+                id="catalog-provider-filter"
+                class="rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 text-sm outline-none focus:border-cyan-300/60"
+              >
+                <option value="all">Todos</option>
+                <option value="aws">AWS</option>
+                <option value="gcp">GCP</option>
+                <option value="azure">Azure</option>
+              </select>
+              <input
+                id="catalog-search"
+                placeholder="Pesquisar servico..."
+                class="rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 text-sm outline-none focus:border-cyan-300/60"
+              />
+              <button
+                id="catalog-sync-btn"
+                class="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+              >
+                Sincronizar Catalogo
+              </button>
+            </div>
+          </div>
+          <p id="catalog-meta" class="mt-3 text-xs text-slate-300"></p>
+          <div id="catalog-grid" class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"></div>
+        </section>
       </section>
     </main>
 
