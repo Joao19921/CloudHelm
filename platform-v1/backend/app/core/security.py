@@ -8,14 +8,21 @@ from passlib.context import CryptContext
 from app.core.config import settings
 
 ALGORITHM = "HS256"
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# use argon2 primarily (it avoids the 72‑byte issue) but keep bcrypt in
+# the list so existing database hashes continue to verify.  The
+# `deprecated="auto"` setting means new hashes will be argon2 while old
+# bcrypt hashes are still accepted and automatically upgraded on login.
+pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 
-# BCrypt has a 72-byte limit for passwords
+# when still using bcrypt in the future we may need a max length; keep a
+# generic constant for clarity but argon2 happily accepts long strings.
 BCRYPT_MAX_LENGTH = 72
 
 
 def hash_password(password: str) -> str:
-    # Truncate password to BCrypt's maximum length
+    # we still truncate just in case callers pass extremely long values;
+    # argon2 itself doesn't enforce a tight limit but this keeps behaviour
+    # consistent with the previous implementation.
     truncated = password[:BCRYPT_MAX_LENGTH]
     return pwd_context.hash(truncated)
 
