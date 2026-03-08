@@ -1,4 +1,5 @@
 import secrets
+from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 import requests
@@ -26,6 +27,7 @@ from app.schemas.auth import (
     TokenResponse,
     UserResponse,
 )
+from app.services.email_service import get_email_service
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -130,6 +132,26 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User pending approval by CloudHelm administrator.",
         )
+    
+    # Check access expiration
+    if user.access_expires_at:
+        if datetime.now(timezone.utc) > user.access_expires_at:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your temporary access has expired. Contact an administrator.",
+            )
+        # Warn if expiration is within 7 days
+        days_until_expiration = (user.access_expires_at - datetime.now(timezone.utc)).days
+        if days_until_expiration <= 7:
+            email_svc = get_email_service()
+            if email_svc:
+                email_svc.send_access_expiration_notice(user.email, user.name, days_until_expiration)
+    
+    # Update last login
+    user.last_login_at = datetime.now(timezone.utc)
+    db.add(user)
+    db.commit()
+    
     token = create_access_token(subject=str(user.id))
     return TokenResponse(access_token=token)
 
