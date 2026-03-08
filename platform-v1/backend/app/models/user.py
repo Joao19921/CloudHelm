@@ -1,9 +1,14 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.audit_log import AuditLog
+    from app.models.demand import Demand
 
 
 class User(Base):
@@ -35,5 +40,10 @@ class User(Base):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    demands = relationship("Demand", back_populates="owner", cascade="all, delete-orphan")
-    audit_logs = relationship("AuditLog", back_populates="user", cascade="all, delete-orphan")
+    demands: Mapped[list["Demand"]] = relationship("Demand", back_populates="owner", cascade="all, delete-orphan")
+    audit_logs: Mapped[list["AuditLog"]] = relationship(
+        "AuditLog",
+        foreign_keys="[AuditLog.user_id]",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
