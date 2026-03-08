@@ -297,29 +297,39 @@ async function orchestrate() {
   const provider = $("provider").value;
   const fileInput = $("demand-file");
 
-  if (fileInput.files.length > 0 && !rawInput) {
-    setStatus("Transcrevendo audio...");
-    const form = new FormData();
-    form.append("audio", fileInput.files[0]);
-    const transcribeRes = await fetch(apiUrl("/api/demands/transcribe"), {
-      method: "POST",
-      headers: state.token ? { Authorization: `Bearer ${state.token}` } : {},
-      body: form,
-    });
-    if (!transcribeRes.ok) {
-      setStatus("Falha na transcricao automatica. Preencha o texto manualmente.", true);
-      return;
+  // Handle file upload if provided
+  if (fileInput.files.length > 0) {
+    setStatus("Processando arquivo e transcrevendo audio se necessario...");
+    const file = fileInput.files[0];
+    const isAudio = file.type.startsWith("audio/") || file.type === "video/mp4";
+    
+    if (isAudio) {
+      // Transcribe audio
+      const form = new FormData();
+      form.append("audio", file);
+      const transcribeRes = await fetch(apiUrl("/api/demands/transcribe"), {
+        method: "POST",
+        headers: state.token ? { Authorization: `Bearer ${state.token}` } : {},
+        body: form,
+      });
+      if (!transcribeRes.ok) {
+        console.warn("Falha na transcricao. Continuando com texto fornecido.");
+      } else {
+        const transcriptData = await transcribeRes.json();
+        // Append transcribed text to existing input
+        if (rawInput) {
+          rawInput += "\n\n[Transcricao do audio]\n" + transcriptData.transcript;
+        } else {
+          rawInput = transcriptData.transcript;
+        }
+        inputType = "mixed_text_audio";
+      }
     }
-    const transcriptData = await transcribeRes.json();
-    rawInput = transcriptData.transcript;
-    inputType = "audio_transcript";
-    $("demand-input").value = rawInput;
-  } else if (fileInput.files.length > 0) {
-    inputType = "audio_transcript";
   }
 
+  // Validate that we have at least a title and some input
   if (!title || rawInput.length < 10) {
-    setStatus("Informe titulo e uma descricao valida da demanda.", true);
+    setStatus("Informe titulo e uma descricao valida da demanda (minimo 10 caracteres).", true);
     return;
   }
 

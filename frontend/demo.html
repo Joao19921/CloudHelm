@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CloudHelm - Exemplos de Arquitetura</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="min-h-screen bg-slate-950 font-['Space_Grotesk'] text-slate-100">
+    <div class="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_12%_16%,rgba(10,132,255,0.3),transparent_42%),linear-gradient(180deg,#020817,#0b1426_48%,#020617)]"></div>
+
+    <header class="border-b border-white/10 bg-slate-900/40 backdrop-blur">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        <div>
+          <p class="text-xs uppercase tracking-[0.2em] text-sky-200">CloudHelm</p>
+          <h1 class="text-xl font-bold">Exemplos de Arquitetura</h1>
+        </div>
+        <div class="flex items-center gap-2">
+          <a href="./index.html" class="rounded-lg border border-white/15 px-3 py-2 text-xs hover:bg-white/10">Voltar</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl space-y-8 px-6 py-8">
+      <!-- AWS Example -->
+      <section class="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
+        <div class="mb-4 flex items-center gap-3">
+          <div class="h-12 w-12 rounded-lg bg-orange-500/20 p-2 flex items-center justify-center">
+            <span class="text-xl">☁️</span>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold text-orange-300">AWS</h2>
+            <p class="text-sm text-slate-400">Amazon Web Services</p>
+          </div>
+        </div>
+
+        <div class="grid gap-6 md:grid-cols-2">
+          <!-- Prompt -->
+          <div>
+            <h3 class="text-base font-semibold text-orange-200">📝 Exemplo de Prompt</h3>
+            <div class="mt-3 rounded-xl border border-white/10 bg-slate-950/70 p-4">
+              <pre class="text-xs leading-5 text-slate-300 whitespace-pre-wrap">Preciso de uma aplicacao web 
+escalavel com:
+- 500 usuarios simultaneos
+- Banco de dados relacional
+- Upload de arquivos
+- Cache distribuido
+- Monitoramento 24/7
+
+Requisitos:
+- Alta disponibilidade (99.99%)
+- RTO: 1 hora
+- RPO: 15 minutos
+- LGPD compliant</pre>
+            </div>
+          </div>
+
+          <!-- Architecture Output -->
+          <div>
+            <h3 class="text-base font-semibold text-orange-200">🏗️ Arquitetura Gerada</h3>
+            <div class="mt-3 space-y-2">
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p class="text-xs font-semibold text-orange-300">Load Balancer</p>
+                <p class="text-[11px] text-slate-400 mt-1">ALB + Route 53</p>
+              </div>
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p class="text-xs font-semibold text-orange-300">Compute</p>
+                <p class="text-[11px] text-slate-400 mt-1">ECS Fargate (2-10 tasks)</p>
+              </div>
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p class="text-xs font-semibold text-orange-300">Database</p>
+                <p class="text-[11px] text-slate-400 mt-1">RDS Aurora PostgreSQL (Multi-AZ)</p>
+              </div>
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p class="text-xs font-semibold text-orange-300">Cache</p>
+                <p class="text-[11px] text-slate-400 mt-1">ElastiCache Redis (Cluster mode)</p>
+              </div>
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p class="text-xs font-semibold text-orange-300">Storage</p>
+                <p class="text-[11px] text-slate-400 mt-1">S3 + CloudFront (CDN)</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Costs -->
+          <div>
+            <h3 class="text-base font-semibold text-orange-200">💰 Estimativa de Custos</h3>
+            <div class="mt-3 rounded-xl border border-white/10 bg-slate-950/70 p-4">
+              <div class="space-y-2 text-xs">
+                <p class="flex justify-between"><span>Compute (ECS Fargate):</span> <span class="text-orange-300 font-semibold">USD 650/mês</span></p>
+                <p class="flex justify-between"><span>RDS Aurora:</span> <span class="text-orange-300 font-semibold">USD 400/mês</span></p>
+                <p class="flex justify-between"><span>ElastiCache Redis:</span> <span class="text-orange-300 font-semibold">USD 200/mês</span></p>
+                <p class="flex justify-between"><span>S3 + CloudFront:</span> <span class="text-orange-300 font-semibold">USD 150/mês</span></p>
+                <p class="flex justify-between"><span>Load Balancer + Route 53:</span> <span class="text-orange-300 font-semibold">USD 100/mês</span></p>
+                <hr class="my-2 border-white/10" />
+                <p class="flex justify-between font-bold"><span>Total Estimado:</span> <span class="text-orange-300">USD 1.500/mês</span></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Terraform Snippet -->
+          <div>
+            <h3 class="text-base font-semibold text-orange-200">🔧 Terraform Module</h3>
+            <div class="mt-3 rounded-xl border border-white/10 bg-slate-950/70 p-4">
+              <pre class="text-[10px] leading-4 text-slate-300 overflow-x-auto">module "aws_web_app" {
+  source = "./modules/web-app"
+  
+  app_name = "myapp"
+  region   = "us-east-1"
+  
+  ecs_task_count = 3
+  container_cpu  = 2048
+  container_mem  = 4096
+  
+  db_instance    = "db.r6i.large"
+  cache_node_type = "cache.r6g.xlarge"
+}</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- GCP Example -->
+      <section class="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
+        <div class="mb-4 flex items-center gap-3">
+          <div class="h-12 w-12 rounded-lg bg-blue-500/20 p-2 flex items-center justify-center">
+            <span class="text-xl">☁️</span>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold text-blue-300">Google Cloud Platform</h2>
+            <p class="text-sm text-slate-400">GCP - Serviços Gerenciados</p>
+          </div>
+        </div>
+
+        <div class="grid gap-6 md:grid-cols-2">
+          <!-- Prompt -->
+          <div>
+            <h3 class="text-base font-semibold text-blue-200">📝 Exemplo de Prompt</h3>
+            <div class="mt-3 rounded-xl border border-white/10 bg-slate-950/70 p-4">
+              <pre class="text-xs leading-5 text-slate-300 whitespace-pre-wrap">Plataforma SaaS com:
+- 1000 usuarios
+- Processamento de dados em tempo real
+- Machine Learning (recomendacoes)
+- API serverless
+- Multiplos formatos (REST, gRPC)
+
+Requisitos:
+- Auto-scaling (0-100 instancias)
+- Latencia baixa (<100ms)
+- Cost-effective
+- Logs centralizados</pre>
+            </div>
+          </div>
+
+          <!-- Architecture Output -->
+          <div>
+            <h3 class="text-base font-semibold text-blue-200">🏗️ Arquitetura Gerada</h3>
+            <div class="mt-3 space-y-2">
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p class="text-xs font-semibold text-blue-300">API Gateway + Load Balance</p>
+                <p class="text-[11px] text-slate-400 mt-1">Cloud Load Balancing + Cloud CDN</p>
+              </div>
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p class="text-xs font-semibold text-blue-300">Serverless Compute</p>
+                <p class="text-[11px] text-slate-400 mt-1">Cloud Run (auto-scaling)</p>
+              </div>
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p class="text-xs font-semibold text-blue-300">Database</p>
+                <p class="text-[11px] text-slate-400 mt-1">Cloud SQL + Firestore (NoSQL)</p>
+              </div>
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p class="text-xs font-semibold text-blue-300">Real-time Events</p>
+                <p class="text-[11px] text-slate-400 mt-1">Cloud Pub/Sub + BigQuery</p>
+              </div>
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p class="text-xs font-semibold text-blue-300">ML Pipeline</p>
+                <p class="text-[11px] text-slate-400 mt-1">Vertex AI + BigQuery ML</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Costs -->
+          <div>
+            <h3 class="text-base font-semibold text-blue-200">💰 Estimativa de Custos</h3>
+            <div class="mt-3 rounded-xl border border-white/10 bg-slate-950/70 p-4">
+              <div class="space-y-2 text-xs">
+                <p class="flex justify-between"><span>Cloud Run:</span> <span class="text-blue-300 font-semibold">USD 400/mês</span></p>
+                <p class="flex justify-between"><span>Cloud SQL:</span> <span class="text-blue-300 font-semibold">USD 300/mês</span></p>
+                <p class="flex justify-between"><span>Firestore:</span> <span class="text-blue-300 font-semibold">USD 200/mês</span></p>
+                <p class="flex justify-between"><span>Pub/Sub:</span> <span class="text-blue-300 font-semibold">USD 100/mês</span></p>
+                <p class="flex justify-between"><span>Vertex AI + BigQuery ML:</span> <span class="text-blue-300 font-semibold">USD 300/mês</span></p>
+                <hr class="my-2 border-white/10" />
+                <p class="flex justify-between font-bold"><span>Total Estimado:</span> <span class="text-blue-300">USD 1.300/mês</span></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Terraform Snippet -->
+          <div>
+            <h3 class="text-base font-semibold text-blue-200">🔧 Terraform Module</h3>
+            <div class="mt-3 rounded-xl border border-white/10 bg-slate-950/70 p-4">
+              <pre class="text-[10px] leading-4 text-slate-300 overflow-x-auto">module "gcp_saas_app" {
+  source = "./modules/gcp-saas"
+  
+  project_id = "my-project"
+  region     = "us-central1"
+  
+  cloud_run = {
+    cpu    = 2
+    memory = "4Gi"
+    max_instances = 100
+  }
+  
+  databases = {
+    cloud_sql = true
+    firestore = true
+  }
+}</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Azure Example -->
+      <section class="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
+        <div class="mb-4 flex items-center gap-3">
+          <div class="h-12 w-12 rounded-lg bg-cyan-500/20 p-2 flex items-center justify-center">
+            <span class="text-xl">☁️</span>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold text-cyan-300">Microsoft Azure</h2>
+            <p class="text-sm text-slate-400">Azure - Enterprise Cloud</p>
+          </div>
+        </div>
+
+        <div class="grid gap-6 md:grid-cols-2">
+          <!-- Prompt -->
+          <div>
+            <h3 class="text-base font-semibold text-cyan-200">📝 Exemplo de Prompt</h3>
+            <div class="mt-3 rounded-xl border border-white/10 bg-slate-950/70 p-4">
+              <pre class="text-xs leading-5 text-slate-300 whitespace-pre-wrap">Migracao de uma aplicacao 
+corporativa para cloud:
+- 200 usuarios internos
+- Integracao com Active Directory
+- Compliance: ISO 27001, GDPR
+- Backup e disaster recovery
+- Ambiente dev/staging/prod
+
+Requisitos:
+- Disponibilidade 99.95%
+- Auditoria completa
+- Isolamento de rede
+- Criptografia end-to-end</pre>
+            </div>
+          </div>
+
+          <!-- Architecture Output -->
+          <div>
+            <h3 class="text-base font-semibold text-cyan-200">🏗️ Arquitetura Gerada</h3>
+            <div class="mt-3 space-y-2">
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p class="text-xs font-semibold text-cyan-300">Identity & Access</p>
+                <p class="text-[11px] text-slate-400 mt-1">Azure AD + Conditional Access</p>
+              </div>
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p class="text-xs font-semibold text-cyan-300">Application Gateway</p>
+                <p class="text-[11px] text-slate-400 mt-1">Application Gateway (WAF) + Traffic Manager</p>
+              </div>
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p class="text-xs font-semibold text-cyan-300">Compute</p>
+                <p class="text-[11px] text-slate-400 mt-1">App Service Plan + Container Instances</p>
+              </div>
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p class="text-xs font-semibold text-cyan-300">Data Protection</p>
+                <p class="text-[11px] text-slate-400 mt-1">SQL Database + Key Vault + Backup Vault</p>
+              </div>
+              <div class="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                <p class="text-xs font-semibold text-cyan-300">Monitoring</p>
+                <p class="text-[11px] text-slate-400 mt-1">Azure Monitor + Sentinel + Policy</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Costs -->
+          <div>
+            <h3 class="text-base font-semibold text-cyan-200">💰 Estimativa de Custos</h3>
+            <div class="mt-3 rounded-xl border border-white/10 bg-slate-950/70 p-4">
+              <div class="space-y-2 text-xs">
+                <p class="flex justify-between"><span>App Service (Premium):</span> <span class="text-cyan-300 font-semibold">USD 350/mês</span></p>
+                <p class="flex justify-between"><span>Azure SQL Database:</span> <span class="text-cyan-300 font-semibold">USD 450/mês</span></p>
+                <p class="flex justify-between"><span>Application Gateway:</span> <span class="text-cyan-300 font-semibold">USD 200/mês</span></p>
+                <p class="flex justify-between"><span>Backup + Storage:</span> <span class="text-cyan-300 font-semibold">USD 250/mês</span></p>
+                <p class="flex justify-between"><span>Monitoring + Security:</span> <span class="text-cyan-300 font-semibold">USD 150/mês</span></p>
+                <hr class="my-2 border-white/10" />
+                <p class="flex justify-between font-bold"><span>Total Estimado:</span> <span class="text-cyan-300">USD 1.400/mês</span></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Terraform Snippet -->
+          <div>
+            <h3 class="text-base font-semibold text-cyan-200">🔧 Terraform Module</h3>
+            <div class="mt-3 rounded-xl border border-white/10 bg-slate-950/70 p-4">
+              <pre class="text-[10px] leading-4 text-slate-300 overflow-x-auto">module "azure_enterprise_app" {
+  source = "./modules/azure-enterprise"
+  
+  resource_group = "rg-production"
+  location       = "eastus"
+  
+  app_service_sku = "P1V2"
+  sql_sku         = "S3"
+  
+  enable_ad_integration = true
+  enable_backup         = true
+}</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Comparison Table -->
+      <section class="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
+        <h2 class="text-xl font-bold mb-4">📊 Comparacao Rapida</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-white/10">
+                <th class="px-3 py-2 text-left font-semibold text-slate-200">Criterio</th>
+                <th class="px-3 py-2 text-left font-semibold text-orange-300">AWS</th>
+                <th class="px-3 py-2 text-left font-semibold text-blue-300">GCP</th>
+                <th class="px-3 py-2 text-left font-semibold text-cyan-300">Azure</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-white/10">
+                <td class="px-3 py-2 text-slate-300">Preco (exemplo)</td>
+                <td class="px-3 py-2 text-orange-200">USD 1.500</td>
+                <td class="px-3 py-2 text-blue-200">USD 1.300</td>
+                <td class="px-3 py-2 text-cyan-200">USD 1.400</td>
+              </tr>
+              <tr class="border-b border-white/10">
+                <td class="px-3 py-2 text-slate-300">Complexidade</td>
+                <td class="px-3 py-2 text-orange-200">Alta variedade</td>
+                <td class="px-3 py-2 text-blue-200">Gerenciada</td>
+                <td class="px-3 py-2 text-cyan-200">Enterprise</td>
+              </tr>
+              <tr class="border-b border-white/10">
+                <td class="px-3 py-2 text-slate-300">Auto-scaling</td>
+                <td class="px-3 py-2 text-orange-200">Sim (granular)</td>
+                <td class="px-3 py-2 text-blue-200">Automatico</td>
+                <td class="px-3 py-2 text-cyan-200">Sim (nativo)</td>
+              </tr>
+              <tr class="border-b border-white/10">
+                <td class="px-3 py-2 text-slate-300">IA/ML nativa</td>
+                <td class="px-3 py-2 text-orange-200">SageMaker</td>
+                <td class="px-3 py-2 text-blue-200">Vertex AI</td>
+                <td class="px-3 py-2 text-cyan-200">Machine Learning</td>
+              </tr>
+              <tr>
+                <td class="px-3 py-2 text-slate-300">Acesso a catalogo</td>
+                <td class="px-3 py-2 text-orange-200">~200 servicos</td>
+                <td class="px-3 py-2 text-blue-200">~150 servicos</td>
+                <td class="px-3 py-2 text-cyan-200">~200+ servicos</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="rounded-2xl border border-cyan-300/30 bg-cyan-300/10 p-8 text-center">
+        <h2 class="text-2xl font-bold text-cyan-300">Pronto para comecar?</h2>
+        <p class="mt-2 text-slate-300">Use CloudHelm para analisar seus requisitos e gerar a arquitetura ideal</p>
+        <a href="./index.html#workspace" class="mt-4 inline-block rounded-xl bg-gradient-to-r from-blue-500 via-cyan-400 to-violet-500 px-8 py-3 font-bold text-slate-950 shadow-glow transition hover:-translate-y-0.5">
+          Ir para o Workspace
+        </a>
+      </section>
+    </main>
+  </body>
+</html>

@@ -127,7 +127,19 @@ async function loadLlmConfig() {
   const data = await res.json();
   $("llm-provider").value = data.provider || "none";
   $("llm-model").value = data.model || "";
-  $("llm-meta").textContent = `OpenAI: ${data.openai_api_key_masked || "nao configurada"} | Gemini: ${data.gemini_api_key_masked || "nao configurada"}`;
+  
+  // Update status displays
+  const openaiStatus = data.openai_api_key_masked ? `✅ Configurada (${data.openai_api_key_masked})` : "❌ Nao configurada";
+  const geminiStatus = data.gemini_api_key_masked ? `✅ Configurada (${data.gemini_api_key_masked})` : "❌ Nao configurada";
+  $("openai-status").textContent = openaiStatus;
+  $("gemini-status").textContent = geminiStatus;
+  
+  $("llm-meta").innerHTML = `
+    <p class="font-semibold text-cyan-300">Status das conexoes:</p>
+    <p class="mt-2">OpenAI: ${openaiStatus}</p>
+    <p class="mt-1">Gemini: ${geminiStatus}</p>
+    <p class="mt-3 text-slate-300">As chaves sao armazenadas de forma segura. Voce so vera os ultimos 4 caracteres por motivos de seguranca.</p>
+  `;
 }
 
 async function saveLlmConfig() {
@@ -150,7 +162,19 @@ async function saveLlmConfig() {
   const data = await res.json();
   $("openai-key").value = "";
   $("gemini-key").value = "";
-  $("llm-meta").textContent = `OpenAI: ${data.openai_api_key_masked || "nao configurada"} | Gemini: ${data.gemini_api_key_masked || "nao configurada"}`;
+  
+  // Update status displays
+  const openaiStatus = data.openai_api_key_masked ? `✅ Configurada (${data.openai_api_key_masked})` : "❌ Nao configurada";
+  const geminiStatus = data.gemini_api_key_masked ? `✅ Configurada (${data.gemini_api_key_masked})` : "❌ Nao configurada";
+  $("openai-status").textContent = openaiStatus;
+  $("gemini-status").textContent = geminiStatus;
+  
+  $("llm-meta").innerHTML = `
+    <p class="font-semibold text-emerald-300">✨ Configuracao salva com sucesso!</p>
+    <p class="mt-2">OpenAI: ${openaiStatus}</p>
+    <p class="mt-1">Gemini: ${geminiStatus}</p>
+    <p class="mt-3 text-slate-300">A IA agora processara as demandas com o modelo selecionado.</p>
+  `;
   setStatus("Configuracao IA salva no backoffice.");
 }
 
