@@ -77,6 +77,20 @@ def ensure_users_schema_columns() -> None:
             if dialect == "mysql"
             else "ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT FALSE"
         )
+    if "approved_at" not in existing_columns:
+        migrations.append(
+            "ALTER TABLE users ADD COLUMN approved_at DATETIME NULL"
+            if dialect == "mysql"
+            else "ALTER TABLE users ADD COLUMN approved_at TIMESTAMP NULL"
+        )
+    if "role" not in existing_columns:
+        migrations.append("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user'")
+    if "access_expires_at" not in existing_columns:
+        migrations.append(
+            "ALTER TABLE users ADD COLUMN access_expires_at DATETIME NULL"
+            if dialect == "mysql"
+            else "ALTER TABLE users ADD COLUMN access_expires_at TIMESTAMP NULL"
+        )
 
     with engine.begin() as connection:
         for statement in migrations:
