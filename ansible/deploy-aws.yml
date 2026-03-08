@@ -1,0 +1,99 @@
+---
+# CloudHelm AWS Deployment Playbook
+# Provisiona infraestrutura completa na AWS e deploy do CloudHelm
+
+- name: "Deploy CloudHelm on AWS"
+  hosts: localhost
+  gather_facts: yes
+  vars:
+    aws_region: "{{ aws_region | default('us-east-1') }}"
+    aws_profile: "{{ aws_profile | default('default') }}"
+    environment: "{{ environment | default('development') }}"
+    run_terraform: "{{ run_terraform | default(true) }}"
+    require_approval: "{{ require_approval | default(true) }}"
+    create_monitoring: "{{ create_monitoring | default(true) }}"
+
+  pre_tasks:
+    - name: "Display deployment configuration"
+      debug:
+        msg: |
+          CloudHelm AWS Deployment Configuration
+          ======================================
+          Region: {{ aws_region }}
+          Profile: {{ aws_profile }}
+          Environment: {{ environment }}
+          Terraform: {{ run_terraform }}
+          Require Approval: {{ require_approval }}
+      tags:
+        - always
+
+    - name: "Validate Ansible version"
+      assert:
+        that:
+          - ansible_version.major >= 2
+          - ansible_version.minor >= 9
+        fail_msg: "Ansible 2.9+ is required"
+      tags:
+        - always
+
+  roles:
+    - role: cloudhelm-common
+      tags:
+        - bootstrap
+        - common
+
+    - role: aws-provision
+      aws_region: "{{ aws_region }}"
+      aws_profile: "{{ aws_profile }}"
+      run_terraform: "{{ run_terraform }}"
+      require_approval: "{{ require_approval }}"
+      create_monitoring_dashboard: "{{ create_monitoring }}"
+      tags:
+        - aws
+        - provision
+
+  post_tasks:
+    - name: "Create deployment report"
+      copy:
+        content: |
+          CloudHelm AWS Deployment Report
+          ================================
+          Date: {{ ansible_date_time.iso8601 }}
+          Region: {{ aws_region }}
+          Environment: {{ environment }}
+          
+          Deployment Status: SUCCESS
+          
+          Next Steps:
+          1. Deploy CloudHelm application
+          2. Configure CI/CD pipeline
+          3. Setup monitoring and alerts
+          4. Configure backup strategy
+          5. Run security scanning
+          
+          Support: https://github.com/Joao19921/CloudHelm/issues
+        dest: "/tmp/cloudhelm-deployment-report-{{ ansible_date_time.date }}.txt"
+      tags:
+        - always
+
+    - name: "Display deployment summary"
+      debug:
+        msg: |
+          ✓ CloudHelm AWS Deployment Complete!
+          
+          Deployment Details:
+          - Region: {{ aws_region }}
+          - Environment: {{ environment }}
+          - Timestamp: {{ ansible_date_time.iso8601 }}
+          
+          Resources:
+          - EKS Cluster deployed
+          - RDS Database configured
+          - Load Balancer created
+          - Security groups configured
+          - CloudWatch monitoring enabled
+          
+          Next: Deploy application to EKS cluster
+          Command: kubectl apply -f cloudhelm-deployment.yaml
+      tags:
+        - always

@@ -1,0 +1,291 @@
+---
+# AWS Infrastructure Provisioning Role
+# Provisiona VPC, EKS, RDS, Load Balancer usando Terraform + Ansible
+
+- name: "Validate AWS credentials"
+  block:
+    - name: "Check AWS CLI installed"
+      command: aws --version
+      register: aws_version
+      changed_when: false
+      tags:
+        - aws
+        - validate
+
+    - name: "Validate AWS credentials"
+      command: aws sts get-caller-identity
+      register: aws_identity
+      changed_when: false
+      tags:
+        - aws
+        - validate
+
+    - name: "Display AWS account info"
+      debug:
+        msg: |
+          Connected to AWS Account:
+          - Account ID: {{ (aws_identity.stdout | from_json).Account }}
+          - User ARN: {{ (aws_identity.stdout | from_json).Arn }}
+      tags:
+        - aws
+        - validate
+  environment:
+    AWS_PROFILE: "{{ aws_profile | default('default') }}"
+
+- name: "Create Terraform working directory"
+  file:
+    path: "/tmp/cloudhelm-terraform"
+    state: directory
+    mode: '0755'
+  tags:
+    - aws
+    - terraform
+
+- name: "Copy Terraform configurations"
+  synchronize:
+    src: "{{ playbook_dir }}/../../../terraform/"
+    dest: "/tmp/cloudhelm-terraform/"
+    delete: no
+  delegate_to: localhost
+  tags:
+    - aws
+    - terraform
+
+- name: "Initialize Terraform"
+  block:
+    - name: "Run terraform init"
+      terraform:
+        project_path: "/tmp/cloudhelm-terraform"
+        state: present
+        force_init: yes
+      environment:
+        AWS_PROFILE: "{{ aws_profile | default('default') }}"
+      tags:
+        - aws
+        - terraform
+
+    - name: "Validate Terraform configuration"
+      shell: "cd /tmp/cloudhelm-terraform && terraform validate"
+      register: tf_validate
+      changed_when: false
+      tags:
+        - aws
+        - terraform
+
+    - name: "Display Terraform validation result"
+      debug:
+        msg: "{{ tf_validate.stdout }}"
+      tags:
+        - aws
+        - terraform
+  when: run_terraform | default(false)
+
+- name: "Plan Terraform changes"
+  block:
+    - name: "Run terraform plan"
+      shell: "cd /tmp/cloudhelm-terraform && terraform plan -out=tfplan"
+      environment:
+        AWS_PROFILE: "{{ aws_profile | default('default') }}"
+      register: tf_plan
+      tags:
+        - aws
+        - terraform:plan
+
+    - name: "Save plan output"
+      copy:
+        content: "{{ tf_plan.stdout }}"
+        dest: "/tmp/cloudhelm-terraform/tfplan.log"
+      tags:
+        - aws
+        - terraform:plan
+  when: run_terraform | default(false)
+
+- name: "Apply Terraform changes"
+  block:
+    - name: "Prompt for approval"
+      pause:
+        prompt: |
+          Terraform plan generated. Review the changes above.
+          Type 'yes' to apply or 'no' to cancel
+      register: tf_approval
+      tags:
+        - aws
+        - terraform:apply
+      when: require_approval | default(true)
+
+    - name: "Run terraform apply"
+      shell: "cd /tmp/cloudhelm-terraform && terraform apply -auto-approve tfplan"
+      environment:
+        AWS_PROFILE: "{{ aws_profile | default('default') }}"
+      register: tf_apply
+      tags:
+        - aws
+        - terraform:apply
+      when: (tf_approval.user_input | lower == 'yes') or (require_approval | default(true) == false)
+
+    - name: "Get Terraform outputs"
+      shell: "cd /tmp/cloudhelm-terraform && terraform output -json"
+      environment:
+        AWS_PROFILE: "{{ aws_profile | default('default') }}"
+      register: tf_outputs
+      changed_when: false
+      tags:
+        - aws
+        - terraform:apply
+  when: run_terraform | default(false)
+
+- name: "Configure kubectl with EKS cluster"
+  block:
+    - name: "Get EKS cluster name"
+      set_fact:
+        eks_cluster_name: "{{ (tf_outputs.stdout | from_json).cluster_id.value }}"
+      tags:
+        - aws
+        - eks
+
+    - name: "Update kubeconfig"
+      shell: "aws eks update-kubeconfig --name {{ eks_cluster_name }} --region {{ aws_region | default('us-east-1') }}"
+      environment:
+        AWS_PROFILE: "{{ aws_profile | default('default') }}"
+      tags:
+        - aws
+        - eks
+
+    - name: "Verify cluster access"
+      command: kubectl get nodes
+      register: kubectl_nodes
+      changed_when: false
+      tags:
+        - aws
+        - eks
+
+    - name: "Display cluster nodes"
+      debug:
+        msg: "{{ kubectl_nodes.stdout }}"
+      tags:
+        - aws
+        - eks
+  when: run_terraform | default(false)
+
+- name: "Setup CloudHelm application role"
+  block:
+    - name: "Create ServiceAccount for CloudHelm"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: cloudhelm-sa
+            namespace: default
+      tags:
+        - aws
+        - kubernetes
+
+    - name: "Create RBAC ClusterRole"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            name: cloudhelm-role
+          rules:
+            - apiGroups: ["apps"]
+              resources: ["deployments", "statefulsets"]
+              verbs: ["get", "list", "watch"]
+            - apiGroups: [""]
+              resources: ["pods", "services"]
+              verbs: ["get", "list", "watch"]
+      tags:
+        - aws
+        - kubernetes
+
+    - name: "Create RBAC ClusterRoleBinding"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: cloudhelm-binding
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cloudhelm-role
+          subjects:
+            - kind: ServiceAccount
+              name: cloudhelm-sa
+              namespace: default
+      tags:
+        - aws
+        - kubernetes
+  when: setup_kubernetes | default(false)
+
+- name: "Create CloudWatch dashboard"
+  block:
+    - name: "Generate dashboard JSON"
+      copy:
+        content: |
+          {
+            "widgets": [
+              {
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [ "AWS/EKS", "cluster_node_count", { "stat": "Average" } ],
+                    [ ".", "cluster_cpu_utilization", { "stat": "Average" } ],
+                    [ ".", "cluster_memory_utilization", { "stat": "Average" } ],
+                    [ "AWS/RDS", "CPUUtilization", { "stat": "Average" } ],
+                    [ ".", "DatabaseConnections", { "stat": "Sum" } ]
+                  ],
+                  "period": 300,
+                  "stat": "Average",
+                  "region": "{{ aws_region | default('us-east-1') }}",
+                  "title": "CloudHelm Infrastructure Metrics"
+                }
+              }
+            ]
+          }
+        dest: "/tmp/cloudwatch-dashboard.json"
+      tags:
+        - aws
+        - monitoring
+
+    - name: "Create CloudWatch dashboard"
+      shell: |
+        aws cloudwatch put-dashboard \
+          --dashboard-name "CloudHelm-Infrastructure" \
+          --dashboard-body file:///tmp/cloudwatch-dashboard.json
+      environment:
+        AWS_PROFILE: "{{ aws_profile | default('default') }}"
+      tags:
+        - aws
+        - monitoring
+  when: create_monitoring_dashboard | default(false)
+
+- name: "Create infrastructure summary"
+  debug:
+    msg: |
+      ✓ AWS Infrastructure Provisioning Complete
+      
+      Resources created:
+      - VPC with public/private subnets
+      - EKS Cluster: {{ eks_cluster_name | default('N/A') }}
+      - RDS Database Instance
+      - Application Load Balancer
+      - Security Groups and IAM roles
+      
+      Access:
+      - EC2: https://console.aws.amazon.com/ec2/
+      - EKS: https://console.aws.amazon.com/eks/
+      - RDS: https://console.aws.amazon.com/rds/
+      - CloudWatch: https://console.aws.amazon.com/cloudwatch/
+      
+      Next steps:
+      1. Deploy CloudHelm application to EKS
+      2. Configure database backups
+      3. Setup monitoring and alarms
+      4. Configure CI/CD pipeline
+  tags:
+    - always

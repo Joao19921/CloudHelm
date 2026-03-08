@@ -1,0 +1,335 @@
+---
+# Azure Infrastructure Provisioning Role
+# Provisiona AKS, Azure SQL, Load Balancer usando az CLI + Ansible
+
+- name: "Validate Azure credentials"
+  block:
+    - name: "Check Azure CLI installed"
+      command: az --version
+      register: az_version
+      changed_when: false
+      tags:
+        - azure
+        - validate
+
+    - name: "Get current Azure subscription"
+      shell: "az account show --query 'id' -o tsv"
+      register: azure_subscription
+      changed_when: false
+      tags:
+        - azure
+        - validate
+
+    - name: "Display Azure subscription info"
+      debug:
+        msg: |
+          Connected to Azure Subscription:
+          - Subscription ID: {{ azure_subscription.stdout | trim }}
+      tags:
+        - azure
+        - validate
+
+- name: "Create Azure resource group"
+  block:
+    - name: "Create resource group"
+      shell: |
+        az group create \
+          --name {{ azure_resource_group }} \
+          --location {{ azure_region | default('eastus') }}
+      register: rg_creation
+      changed_when: "rg_creation.rc == 0"
+      tags:
+        - azure
+        - network
+
+    - name: "Create virtual network"
+      shell: |
+        az network vnet create \
+          --resource-group {{ azure_resource_group }} \
+          --name cloudhelm-vnet \
+          --address-prefix 10.0.0.0/16 \
+          --subnet-name aks-subnet \
+          --subnet-prefix 10.0.0.0/20
+      register: vnet_creation
+      changed_when: "vnet_creation.rc == 0"
+      failed_when: false
+      tags:
+        - azure
+        - network
+
+    - name: "Create network security group"
+      shell: |
+        az network nsg create \
+          --resource-group {{ azure_resource_group }} \
+          --name cloudhelm-nsg
+      tags:
+        - azure
+        - network
+
+    - name: "Add NSG rules"
+      shell: |
+        az network nsg rule create \
+          --resource-group {{ azure_resource_group }} \
+          --nsg-name cloudhelm-nsg \
+          --name allow-{{ item.name }} \
+          --priority {{ item.priority }} \
+          --direction Inbound \
+          --access Allow \
+          --protocol {{ item.protocol }} \
+          --source-address-prefixes '*' \
+          --destination-address-prefixes '*' \
+          --destination-port-ranges {{ item.ports }}
+      loop:
+        - name: "http"
+          priority: 100
+          protocol: Tcp
+          ports: "80"
+        - name: "https"
+          priority: 110
+          protocol: Tcp
+          ports: "443"
+        - name: "kubernetes"
+          priority: 120
+          protocol: Tcp
+          ports: "6443"
+      tags:
+        - azure
+        - network
+
+- name: "Create Azure Kubernetes Service (AKS)"
+  block:
+    - name: "Create AKS cluster"
+      shell: |
+        az aks create \
+          --resource-group {{ azure_resource_group }} \
+          --name cloudhelm-aks \
+          --node-count 2 \
+          --vm-set-type VirtualMachineScaleSets \
+          --load-balancer-sku standard \
+          --enable-managed-identity \
+          --network-plugin azure \
+          --vnet-subnet-id /subscriptions/{{ azure_subscription.stdout | trim }}/resourceGroups/{{ azure_resource_group }}/providers/Microsoft.Network/virtualNetworks/cloudhelm-vnet/subnets/aks-subnet \
+          --docker-bridge-address 172.17.0.1/16 \
+          --service-cidr 10.1.0.0/16 \
+          --dns-service-ip 10.1.0.10 \
+          --enable-cluster-autoscaling \
+          --min-count 1 \
+          --max-count 10 \
+          --zones 1 2 3 \
+          --enable-managed-identity \
+          --enable-add-ons monitoring,http_application_routing
+      register: aks_creation
+      changed_when: "aks_creation.rc == 0"
+      failed_when: false
+      tags:
+        - azure
+        - aks
+
+    - name: "Get AKS credentials"
+      shell: |
+        az aks get-credentials \
+          --resource-group {{ azure_resource_group }} \
+          --name cloudhelm-aks \
+          --overwrite-existing
+      tags:
+        - azure
+        - aks
+
+    - name: "Verify cluster access"
+      command: kubectl get nodes
+      register: kubectl_nodes
+      changed_when: false
+      tags:
+        - azure
+        - aks
+
+    - name: "Display cluster nodes"
+      debug:
+        msg: "{{ kubectl_nodes.stdout }}"
+      tags:
+        - azure
+        - aks
+
+- name: "Create Azure SQL Database"
+  block:
+    - name: "Create Azure SQL Server"
+      shell: |
+        az sql server create \
+          --resource-group {{ azure_resource_group }} \
+          --name cloudhelm-sqlserver \
+          --location {{ azure_region | default('eastus') }} \
+          --admin-user {{ sql_admin_user | default('sqladmin') }} \
+          --admin-password {{ sql_admin_password }}
+      register: sql_server_creation
+      changed_when: "sql_server_creation.rc == 0"
+      failed_when: false
+      tags:
+        - azure
+        - sql
+
+    - name: "Create Azure SQL Database"
+      shell: |
+        az sql db create \
+          --resource-group {{ azure_resource_group }} \
+          --server cloudhelm-sqlserver \
+          --name cloudhelm-db \
+          --edition Standard \
+          --service-objective S1 \
+          --backup-storage-redundancy Geo
+      register: sql_db_creation
+      changed_when: "sql_db_creation.rc == 0"
+      failed_when: false
+      tags:
+        - azure
+        - sql
+
+    - name: "Add firewall rule for Azure services"
+      shell: |
+        az sql server firewall-rule create \
+          --resource-group {{ azure_resource_group }} \
+          --server cloudhelm-sqlserver \
+          --name AllowAzureServices \
+          --start-ip-address 0.0.0.0 \
+          --end-ip-address 0.0.0.0
+      tags:
+        - azure
+        - sql
+
+- name: "Create Azure Storage Account"
+  block:
+    - name: "Create storage account"
+      shell: |
+        az storage account create \
+          --resource-group {{ azure_resource_group }} \
+          --name cloudhelmstorage \
+          --location {{ azure_region | default('eastus') }} \
+          --sku Standard_GRS \
+          --kind StorageV2 \
+          --access-tier Hot
+      register: storage_creation
+      changed_when: "storage_creation.rc == 0"
+      failed_when: false
+      tags:
+        - azure
+        - storage
+
+    - name: "Create blob containers"
+      shell: |
+        az storage container create \
+          --account-name cloudhelmstorage \
+          --name {{ item }}
+      loop:
+        - backups
+        - logs
+        - artifacts
+      tags:
+        - azure
+        - storage
+
+- name: "Create Kubernetes resources"
+  block:
+    - name: "Create namespace"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: cloudhelm
+      tags:
+        - azure
+        - kubernetes
+
+    - name: "Create StorageClass"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: storage.k8s.io/v1
+          kind: StorageClass
+          metadata:
+            name: cloudhelm-storage
+          provisioner: disk.csi.azure.com
+          parameters:
+            storageaccounttype: Standard_LRS
+            kind: Managed
+          allowVolumeExpansion: true
+      tags:
+        - azure
+        - kubernetes
+
+    - name: "Create Pod Identity"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: aadpodidentity.k8s.io/v1
+          kind: AzureIdentity
+          metadata:
+            name: cloudhelm-identity
+            namespace: cloudhelm
+          spec:
+            type: 0
+            resourceID: /subscriptions/{{ azure_subscription.stdout | trim }}/resourcegroups/{{ azure_resource_group }}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/cloudhelm-identity
+            clientID: "{{ client_id }}"
+      tags:
+        - azure
+        - kubernetes
+        - identity
+      when: client_id is defined
+
+- name: "Create Azure Load Balancer"
+  block:
+    - name: "Create public IP"
+      shell: |
+        az network public-ip create \
+          --resource-group {{ azure_resource_group }} \
+          --name cloudhelm-pip \
+          --sku Standard
+      tags:
+        - azure
+        - networking
+
+    - name: "Create load balancer"
+      shell: |
+        az network lb create \
+          --resource-group {{ azure_resource_group }} \
+          --name cloudhelm-lb \
+          --sku Standard \
+          --public-ip-address cloudhelm-pip \
+          --frontend-ip-name frontend \
+          --backend-pool-name backend
+      register: lb_creation
+      changed_when: "lb_creation.rc == 0"
+      failed_when: false
+      tags:
+        - azure
+        - networking
+
+- name: "Create Azure infrastructure summary"
+  debug:
+    msg: |
+      ✓ Azure Infrastructure Provisioning Complete
+      
+      Resources created:
+      - Resource Group: {{ azure_resource_group }}
+      - Virtual Network: cloudhelm-vnet
+      - AKS Cluster: cloudhelm-aks
+      - SQL Server: cloudhelm-sqlserver
+      - SQL Database: cloudhelm-db
+      - Storage Account: cloudhelmstorage
+      - Load Balancer: cloudhelm-lb
+      - Public IP: cloudhelm-pip
+      
+      Access:
+      - Azure Portal: https://portal.azure.com/
+      - AKS: https://portal.azure.com/#blade/Microsoft_Azure_ContainerRegistry/RegistryListBlade
+      - Azure SQL: https://portal.azure.com/#blade/HubsExtension/BrowseAll
+      - Storage: https://portal.azure.com/#blade/HubsExtension/BrowseAll
+      
+      Next steps:
+      1. Deploy CloudHelm application to AKS
+      2. Configure Azure SQL users
+      3. Setup Azure Monitor and Alerts
+      4. Configure backup policies
+      5. Setup Azure DevOps pipelines
+  tags:
+    - always

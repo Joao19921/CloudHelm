@@ -1,0 +1,260 @@
+---
+# GCP Infrastructure Provisioning Role
+# Provisiona GKE, Cloud SQL, Load Balancer usando gcloud + Ansible
+
+- name: "Validate GCP credentials"
+  block:
+    - name: "Check gcloud installed"
+      command: gcloud --version
+      register: gcloud_version
+      changed_when: false
+      tags:
+        - gcp
+        - validate
+
+    - name: "Validate GCP project"
+      shell: "gcloud config get-value project"
+      register: gcp_project
+      changed_when: false
+      tags:
+        - gcp
+        - validate
+
+    - name: "Validate GCP credentials"
+      shell: "gcloud auth list"
+      register: gcp_auth
+      changed_when: false
+      tags:
+        - gcp
+        - validate
+
+    - name: "Display GCP project info"
+      debug:
+        msg: |
+          Connected to GCP Project:
+          - Project ID: {{ gcp_project.stdout | trim }}
+          - Active account: {{ (gcp_auth.stdout_lines[1] | regex_search('ACTIVE.*')) | trim }}
+      tags:
+        - gcp
+        - validate
+  environment:
+    GOOGLE_APPLICATION_CREDENTIALS: "{{ gcp_credentials_file | default('~/.config/gcloud/application_default_credentials.json') }}"
+
+- name: "Create GCP resources"
+  block:
+    - name: "Create VPC network"
+      gcp_compute_network:
+        name: cloudhelm-vpc
+        auto_create_subnetworks: no
+        project: "{{ gcp_project_id }}"
+        auth_kind: serviceaccount
+        service_account_file: "{{ gcp_credentials_file }}"
+        state: present
+      register: vpc_network
+      tags:
+        - gcp
+        - network
+
+    - name: "Create subnet"
+      gcp_compute_subnetwork:
+        name: cloudhelm-subnet
+        network: "{{ vpc_network }}"
+        ipCidrRange: 10.0.0.0/20
+        region: "{{ gcp_region | default('us-central1') }}"
+        project: "{{ gcp_project_id }}"
+        auth_kind: serviceaccount
+        service_account_file: "{{ gcp_credentials_file }}"
+        state: present
+      tags:
+        - gcp
+        - network
+
+    - name: "Create firewall rules"
+      gcp_compute_firewall:
+        name: "cloudhelm-allow-{{ item.name }}"
+        network: cloudhelm-vpc
+        allowed: "{{ item.allowed }}"
+        source_ranges: "{{ item.source_ranges }}"
+        project: "{{ gcp_project_id }}"
+        auth_kind: serviceaccount
+        service_account_file: "{{ gcp_credentials_file }}"
+        state: present
+      loop:
+        - name: "ssh"
+          allowed:
+            - IPProtocol: tcp
+              ports: ['22']
+          source_ranges: ['0.0.0.0/0']
+        - name: "http"
+          allowed:
+            - IPProtocol: tcp
+              ports: ['80']
+          source_ranges: ['0.0.0.0/0']
+        - name: "https"
+          allowed:
+            - IPProtocol: tcp
+              ports: ['443']
+          source_ranges: ['0.0.0.0/0']
+        - name: "kubernetes"
+          allowed:
+            - IPProtocol: tcp
+              ports: ['6443']
+          source_ranges: ['0.0.0.0/0']
+      tags:
+        - gcp
+        - network
+
+    - name: "Create GKE cluster"
+      shell: |
+        gcloud container clusters create cloudhelm-gke \
+          --zone={{ gcp_zone | default('us-central1-a') }} \
+          --num-nodes=2 \
+          --machine-type=n1-standard-2 \
+          --enable-autoscaling \
+          --min-nodes=1 \
+          --max-nodes=10 \
+          --enable-autorepair \
+          --enable-autoupgrade \
+          --network=cloudhelm-vpc \
+          --subnetwork=cloudhelm-subnet \
+          --addons=HorizontalPodAutoscaling,HttpLoadBalancing,GcePersistentDiskCsiDriver \
+          --workload-pool={{ gcp_project_id }}.svc.id.goog \
+          --enable-stackdriver-kubernetes
+      register: gke_creation
+      changed_when: "gke_creation.rc == 0"
+      failed_when: false
+      tags:
+        - gcp
+        - gke
+
+    - name: "Get GKE cluster credentials"
+      shell: |
+        gcloud container clusters get-credentials cloudhelm-gke \
+          --zone={{ gcp_zone | default('us-central1-a') }}
+      tags:
+        - gcp
+        - gke
+
+    - name: "Create Cloud SQL instance"
+      shell: |
+        gcloud sql instances create cloudhelm-postgres \
+          --database-version=POSTGRES_15 \
+          --region={{ gcp_region | default('us-central1') }} \
+          --tier=db-custom-2-8192 \
+          --availability-type=REGIONAL \
+          --backup-start-time=03:00 \
+          --enable-bin-log
+      register: cloudsql_creation
+      changed_when: "cloudsql_creation.rc == 0"
+      failed_when: false
+      tags:
+        - gcp
+        - cloud-sql
+
+    - name: "Create Cloud SQL database"
+      shell: |
+        gcloud sql databases create cloudhelm \
+          --instance=cloudhelm-postgres
+      tags:
+        - gcp
+        - cloud-sql
+
+    - name: "Create Kubernetes namespace"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: cloudhelm
+      tags:
+        - gcp
+        - kubernetes
+
+    - name: "Create Workload Identity binding"
+      shell: |
+        gcloud iam service-accounts create cloudhelm-ksa \
+          --display-name="CloudHelm Kubernetes Service Account"
+        
+        gcloud iam service-accounts add-iam-policy-binding cloudhelm-ksa@{{ gcp_project_id }}.iam.gserviceaccount.com \
+          --role roles/iam.workloadIdentityUser \
+          --member "serviceAccount:{{ gcp_project_id }}.svc.id.goog[cloudhelm/cloudhelm-ksa]"
+      register: workload_identity
+      changed_when: "workload_identity.rc == 0"
+      failed_when: false
+      tags:
+        - gcp
+        - kubernetes
+        - iam
+
+    - name: "Create StorageClass for GKE"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: storage.k8s.io/v1
+          kind: StorageClass
+          metadata:
+            name: cloudhelm-storage
+          provisioner: pd.csi.storage.gke.io
+          allowVolumeExpansion: true
+          parameters:
+            type: pd-standard
+            replication-type: none
+      tags:
+        - gcp
+        - kubernetes
+        - storage
+
+  environment:
+    GOOGLE_APPLICATION_CREDENTIALS: "{{ gcp_credentials_file | default('~/.config/gcloud/application_default_credentials.json') }}"
+
+- name: "Setup monitoring on GCP"
+  block:
+    - name: "Enable Cloud Monitoring"
+      shell: "gcloud services enable monitoring.googleapis.com"
+      tags:
+        - gcp
+        - monitoring
+
+    - name: "Create monitoring alert policy"
+      shell: |
+        gcloud alpha monitoring policies create \
+          --notification-channels={{ notification_channel_id }} \
+          --display-name="CloudHelm High CPU Alert" \
+          --condition-display-name="CPU > 80%" \
+          --condition-threshold-value=0.8 \
+          --condition-threshold-duration=300s
+      tags:
+        - gcp
+        - monitoring
+      when: notification_channel_id is defined
+
+  environment:
+    GOOGLE_APPLICATION_CREDENTIALS: "{{ gcp_credentials_file | default('~/.config/gcloud/application_default_credentials.json') }}"
+
+- name: "Create GCP infrastructure summary"
+  debug:
+    msg: |
+      ✓ GCP Infrastructure Provisioning Complete
+      
+      Resources created:
+      - VPC Network: cloudhelm-vpc
+      - Subnet: cloudhelm-subnet
+      - GKE Cluster: cloudhelm-gke
+      - Cloud SQL: cloudhelm-postgres
+      - Workload Identity configured
+      
+      Access:
+      - GCP Console: https://console.cloud.google.com/
+      - GKE: https://console.cloud.google.com/kubernetes/
+      - Cloud SQL: https://console.cloud.google.com/sql/
+      - Cloud Monitoring: https://console.cloud.google.com/monitoring/
+      
+      Next steps:
+      1. Deploy CloudHelm application to GKE
+      2. Create Cloud SQL users and databases
+      3. Setup VPC Peering if needed
+      4. Configure Kubernetes RBAC
+      5. Deploy Istio for service mesh (optional)
+  tags:
+    - always

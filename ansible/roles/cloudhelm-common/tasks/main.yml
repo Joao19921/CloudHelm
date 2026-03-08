@@ -1,0 +1,227 @@
+---
+# CloudHelm Common Tasks
+# Instala dependências e configura sistema base para todos os ambientes
+
+- name: "Update package manager"
+  package:
+    state: latest
+    name: "{{ item }}"
+  loop:
+    - python3
+    - python3-pip
+    - curl
+    - wget
+    - git
+    - jq
+    - vim
+    - htop
+  become: true
+  register: pkg_update
+  tags:
+    - packages
+    - bootstrap
+
+- name: "Install Python dependencies"
+  pip:
+    name: "{{ item }}"
+    state: latest
+    executable: pip3
+  loop:
+    - boto3
+    - botocore
+    - google-cloud-compute
+    - google-cloud-storage
+    - azure-cli
+    - azure-identity
+    - requests
+    - pyyaml
+  become: true
+  tags:
+    - python
+    - bootstrap
+
+- name: "Install Docker"
+  block:
+    - name: "Add Docker GPG key"
+      shell: "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -"
+      become: true
+      changed_when: false
+      tags:
+        - docker
+        - bootstrap
+
+    - name: "Add Docker repository"
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+      become: true
+      tags:
+        - docker
+        - bootstrap
+
+    - name: "Install Docker CE"
+      package:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: latest
+      become: true
+      tags:
+        - docker
+        - bootstrap
+
+    - name: "Enable Docker service"
+      systemd:
+        name: docker
+        enabled: yes
+        state: started
+      become: true
+      tags:
+        - docker
+        - bootstrap
+
+    - name: "Add user to docker group"
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+      become: true
+      tags:
+        - docker
+        - bootstrap
+  when: ansible_os_family == "Debian"
+
+- name: "Install kubectl"
+  block:
+    - name: "Download kubectl binary"
+      shell: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/
+      args:
+        creates: /usr/local/bin/kubectl
+      tags:
+        - kubernetes
+        - bootstrap
+
+    - name: "Verify kubectl installation"
+      command: kubectl version --client
+      register: kubectl_version
+      changed_when: false
+      tags:
+        - kubernetes
+        - bootstrap
+  when: ansible_os_family == "Debian"
+
+- name: "Install Terraform"
+  block:
+    - name: "Download Terraform binary"
+      unarchive:
+        src: "https://releases.hashicorp.com/terraform/1.7.0/terraform_1.7.0_linux_amd64.zip"
+        dest: /usr/local/bin/
+        remote_src: yes
+      become: true
+      tags:
+        - terraform
+        - bootstrap
+
+    - name: "Verify Terraform installation"
+      command: terraform version
+      register: terraform_version
+      changed_when: false
+      tags:
+        - terraform
+        - bootstrap
+  when: ansible_os_family == "Debian"
+
+- name: "Create cloudhelm working directory"
+  file:
+    path: "/opt/cloudhelm"
+    state: directory
+    mode: '0755'
+  become: true
+  tags:
+    - bootstrap
+
+- name: "Create log directory"
+  file:
+    path: "/var/log/cloudhelm"
+    state: directory
+    mode: '0755'
+  become: true
+  tags:
+    - bootstrap
+
+- name: "Create monitoring script"
+  copy:
+    content: |
+      #!/bin/bash
+      # CloudHelm Monitoring Script
+      
+      LOG_FILE="/var/log/cloudhelm/monitoring.log"
+      DATE=$(date '+%Y-%m-%d %H:%M:%S')
+      
+      echo "[$DATE] CloudHelm Health Check" >> $LOG_FILE
+      
+      # Check Docker
+      if docker ps > /dev/null 2>&1; then
+        echo "[$DATE] Docker: OK" >> $LOG_FILE
+      else
+        echo "[$DATE] Docker: FAILED" >> $LOG_FILE
+      fi
+      
+      # Check disk space
+      DISK_USAGE=$(df / | awk 'NR==2 {print $5}' | cut -d'%' -f1)
+      if [ $DISK_USAGE -gt 80 ]; then
+        echo "[$DATE] Disk: WARNING ($DISK_USAGE%)" >> $LOG_FILE
+      else
+        echo "[$DATE] Disk: OK ($DISK_USAGE%)" >> $LOG_FILE
+      fi
+      
+      # Check memory
+      if [ -f /proc/meminfo ]; then
+        MEM_USAGE=$(free | grep Mem | awk '{print int($3/$2 * 100)}')
+        echo "[$DATE] Memory: $MEM_USAGE%" >> $LOG_FILE
+      fi
+    dest: /usr/local/bin/cloudhelm-monitoring.sh
+    mode: '0755'
+  become: true
+  tags:
+    - monitoring
+
+- name: "Create cron job for monitoring"
+  cron:
+    name: "CloudHelm Monitoring"
+    minute: "*/5"
+    job: "/usr/local/bin/cloudhelm-monitoring.sh"
+    user: root
+  become: true
+  tags:
+    - monitoring
+    - cron
+
+- name: "Display summary"
+  debug:
+    msg: |
+      ✓ CloudHelm Common Setup Complete
+      
+      Installed tools:
+      - Python 3 with cloud SDKs (AWS, GCP, Azure)
+      - Docker & Docker Compose
+      - kubectl (Kubernetes CLI)
+      - Terraform
+      - CloudHelm Monitoring
+      
+      Directories created:
+      - /opt/cloudhelm (working directory)
+      - /var/log/cloudhelm (logs)
+      
+      Next steps:
+      1. Configure cloud credentials (AWS/GCP/Azure)
+      2. Run cloud-specific roles (aws, gcp, azure)
+      3. Deploy CloudHelm infrastructure
+  tags:
+    - always

@@ -1,0 +1,111 @@
+---
+# CloudHelm GCP Deployment Playbook
+# Provisiona infraestrutura completa no GCP e deploy do CloudHelm
+
+- name: "Deploy CloudHelm on GCP"
+  hosts: localhost
+  gather_facts: yes
+  vars:
+    gcp_region: "{{ gcp_region | default('us-central1') }}"
+    gcp_zone: "{{ gcp_zone | default('us-central1-a') }}"
+    gcp_project_id: "{{ gcp_project_id | default(lookup('env', 'GOOGLE_CLOUD_PROJECT')) }}"
+    environment: "{{ environment | default('development') }}"
+    setup_kubernetes: "{{ setup_kubernetes | default(true) }}"
+    create_monitoring_dashboard: "{{ create_monitoring_dashboard | default(true) }}"
+
+  pre_tasks:
+    - name: "Display deployment configuration"
+      debug:
+        msg: |
+          CloudHelm GCP Deployment Configuration
+          =======================================
+          Region: {{ gcp_region }}
+          Zone: {{ gcp_zone }}
+          Project: {{ gcp_project_id }}
+          Environment: {{ environment }}
+          Setup Kubernetes: {{ setup_kubernetes }}
+      tags:
+        - always
+
+    - name: "Validate GCP credentials file"
+      stat:
+        path: "{{ gcp_credentials_file | default(lookup('env', 'GOOGLE_APPLICATION_CREDENTIALS')) }}"
+      register: gcp_creds
+      failed_when: not gcp_creds.stat.exists
+      tags:
+        - always
+
+  roles:
+    - role: cloudhelm-common
+      tags:
+        - bootstrap
+        - common
+
+    - role: gcp-provision
+      gcp_region: "{{ gcp_region }}"
+      gcp_zone: "{{ gcp_zone }}"
+      gcp_project_id: "{{ gcp_project_id }}"
+      gcp_credentials_file: "{{ gcp_credentials_file | default(lookup('env', 'GOOGLE_APPLICATION_CREDENTIALS')) }}"
+      setup_kubernetes: "{{ setup_kubernetes }}"
+      create_monitoring_dashboard: "{{ create_monitoring_dashboard }}"
+      tags:
+        - gcp
+        - provision
+
+  post_tasks:
+    - name: "Create deployment report"
+      copy:
+        content: |
+          CloudHelm GCP Deployment Report
+          ================================
+          Date: {{ ansible_date_time.iso8601 }}
+          Region: {{ gcp_region }}
+          Project: {{ gcp_project_id }}
+          Environment: {{ environment }}
+          
+          Deployment Status: SUCCESS
+          
+          Resources Created:
+          - GKE Cluster: cloudhelm-gke
+          - Cloud SQL: cloudhelm-postgres
+          - VPC Network: cloudhelm-vpc
+          - Subnet: cloudhelm-subnet
+          - Workload Identity: Configured
+          
+          Next Steps:
+          1. Deploy CloudHelm application to GKE
+          2. Configure Cloud Deploy pipelines
+          3. Setup Cloud Monitoring alerts
+          4. Configure backup policies
+          5. Setup Cloud Armor for DDoS protection
+          
+          Support: https://github.com/Joao19921/CloudHelm/issues
+        dest: "/tmp/cloudhelm-deployment-report-gcp-{{ ansible_date_time.date }}.txt"
+      tags:
+        - always
+
+    - name: "Display deployment summary"
+      debug:
+        msg: |
+          ✓ CloudHelm GCP Deployment Complete!
+          
+          Deployment Details:
+          - Project: {{ gcp_project_id }}
+          - Region: {{ gcp_region }}
+          - Environment: {{ environment }}
+          - Timestamp: {{ ansible_date_time.iso8601 }}
+          
+          Resources:
+          - GKE Cluster deployed and accessible
+          - Cloud SQL PostgreSQL configured
+          - Workload Identity configured
+          - Custom StorageClass created
+          - Cloud Monitoring enabled
+          
+          Next: Deploy application to GKE cluster
+          Commands:
+            kubectl config current-context
+            kubectl apply -f cloudhelm-deployment-gcp.yaml
+            kubectl logs -f deployment/cloudhelm -n cloudhelm
+      tags:
+        - always

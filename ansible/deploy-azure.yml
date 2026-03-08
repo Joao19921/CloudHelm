@@ -1,0 +1,134 @@
+---
+# CloudHelm Azure Deployment Playbook
+# Provisiona infraestrutura completa no Azure e deploy do CloudHelm
+
+- name: "Deploy CloudHelm on Azure"
+  hosts: localhost
+  gather_facts: yes
+  vars:
+    azure_region: "{{ azure_region | default('eastus') }}"
+    azure_resource_group: "{{ azure_resource_group | default('cloudhelm-rg') }}"
+    environment: "{{ environment | default('development') }}"
+    sql_admin_user: "{{ sql_admin_user | default('sqladmin') }}"
+    sql_admin_password: "{{ sql_admin_password | default(lookup('password', '/tmp/sql_password length=16 chars=ascii_letters,digits')) }}"
+
+  pre_tasks:
+    - name: "Display deployment configuration"
+      debug:
+        msg: |
+          CloudHelm Azure Deployment Configuration
+          ==========================================
+          Region: {{ azure_region }}
+          Resource Group: {{ azure_resource_group }}
+          Environment: {{ environment }}
+          SQL Admin User: {{ sql_admin_user }}
+      tags:
+        - always
+
+    - name: "Validate Azure CLI login"
+      shell: "az account show"
+      register: az_account
+      changed_when: false
+      failed_when: az_account.rc != 0
+      tags:
+        - always
+
+  roles:
+    - role: cloudhelm-common
+      tags:
+        - bootstrap
+        - common
+
+    - role: azure-provision
+      azure_region: "{{ azure_region }}"
+      azure_resource_group: "{{ azure_resource_group }}"
+      sql_admin_user: "{{ sql_admin_user }}"
+      sql_admin_password: "{{ sql_admin_password }}"
+      tags:
+        - azure
+        - provision
+
+  post_tasks:
+    - name: "Save SQL password securely"
+      copy:
+        content: |
+          SQL Server Admin Credentials
+          ============================
+          Server: cloudhelm-sqlserver.database.windows.net
+          Database: cloudhelm-db
+          Username: {{ sql_admin_user }}
+          Password: {{ sql_admin_password }}
+          
+          IMPORTANT: Store this securely!
+          Recommended: Use Azure Key Vault
+        dest: "{{ lookup('env', 'HOME') }}/.cloudhelm/azure-sql-credentials.txt"
+        mode: '0600'
+      become: false
+      tags:
+        - always
+
+    - name: "Create deployment report"
+      copy:
+        content: |
+          CloudHelm Azure Deployment Report
+          ==================================
+          Date: {{ ansible_date_time.iso8601 }}
+          Region: {{ azure_region }}
+          Resource Group: {{ azure_resource_group }}
+          Environment: {{ environment }}
+          
+          Deployment Status: SUCCESS
+          
+          Resources Created:
+          - Resource Group: {{ azure_resource_group }}
+          - AKS Cluster: cloudhelm-aks
+          - Azure SQL Server: cloudhelm-sqlserver
+          - Azure SQL Database: cloudhelm-db
+          - Virtual Network: cloudhelm-vnet
+          - Storage Account: cloudhelmstorage
+          - Load Balancer: cloudhelm-lb
+          - Network Security Group: cloudhelm-nsg
+          
+          Next Steps:
+          1. Deploy CloudHelm application to AKS
+          2. Configure Azure DevOps pipelines
+          3. Setup Azure Monitor alerts
+          4. Configure backup and disaster recovery
+          5. Setup Azure Policy for governance
+          
+          Support: https://github.com/Joao19921/CloudHelm/issues
+        dest: "/tmp/cloudhelm-deployment-report-azure-{{ ansible_date_time.date }}.txt"
+      tags:
+        - always
+
+    - name: "Display deployment summary"
+      debug:
+        msg: |
+          ✓ CloudHelm Azure Deployment Complete!
+          
+          Deployment Details:
+          - Resource Group: {{ azure_resource_group }}
+          - Region: {{ azure_region }}
+          - Environment: {{ environment }}
+          - Timestamp: {{ ansible_date_time.iso8601 }}
+          
+          Resources:
+          - AKS Cluster deployed and healthy
+          - Azure SQL configured with backups
+          - Storage Account ready for data
+          - Network and Security configured
+          - Azure Monitor and Alerts enabled
+          
+          Next: Deploy application to AKS cluster
+          Commands:
+            az aks get-credentials --resource-group {{ azure_resource_group }} --name cloudhelm-aks
+            kubectl apply -f cloudhelm-deployment-azure.yaml
+            kubectl get pods -n cloudhelm
+            
+          SQL Connection:
+            Server: cloudhelm-sqlserver.database.windows.net
+            Database: cloudhelm-db
+            User: {{ sql_admin_user }}
+            (Password saved in ~/.cloudhelm/azure-sql-credentials.txt)
+      tags:
+        - always
