@@ -88,6 +88,24 @@ def ensure_users_schema_columns() -> None:
             if dialect == "mysql"
             else "ALTER TABLE users ADD COLUMN access_expires_at TIMESTAMP NULL"
         )
+    if "last_login_at" not in existing_columns:
+        migrations.append(
+            "ALTER TABLE users ADD COLUMN last_login_at DATETIME NULL"
+            if dialect == "mysql"
+            else "ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP NULL"
+        )
+    if "created_at" not in existing_columns:
+        migrations.append(
+            "ALTER TABLE users ADD COLUMN created_at DATETIME NULL"
+            if dialect == "mysql"
+            else "ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        )
+    if "updated_at" not in existing_columns:
+        migrations.append(
+            "ALTER TABLE users ADD COLUMN updated_at DATETIME NULL"
+            if dialect == "mysql"
+            else "ALTER TABLE users ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        )
 
     with engine.begin() as connection:
         for statement in migrations:
