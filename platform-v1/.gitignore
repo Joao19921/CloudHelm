@@ -1,4 +1,0 @@
-.env
-*.db
-__pycache__/
-dist_cloud_data/
