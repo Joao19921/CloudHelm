@@ -11,7 +11,7 @@ def test_register_new_user(client: TestClient, db_session: Session):
         "password": "StrongPassword123!"
     }
     
-    response = client.post("/auth/register", json=payload)
+    response = client.post("/api/auth/register", json=payload)
     
     assert response.status_code == 201
     data = response.json()
@@ -33,11 +33,11 @@ def test_register_duplicate_email(client: TestClient, db_session: Session):
     }
     
     # Register once
-    response1 = client.post("/auth/register", json=payload)
+    response1 = client.post("/api/auth/register", json=payload)
     assert response1.status_code == 201
     
     # Register twice
-    response2 = client.post("/auth/register", json=payload)
+    response2 = client.post("/api/auth/register", json=payload)
     assert response2.status_code == 409
     assert response2.json()["detail"] == "Email already registered."
 
@@ -59,7 +59,7 @@ def test_login_unapproved_user(client: TestClient, db_session: Session):
     db_session.commit()
     
     # Act: Attempt login
-    response = client.post("/auth/login", json=payload)
+    response = client.post("/api/auth/login", json=payload)
     
     # Assert
     assert response.status_code == 403
@@ -83,7 +83,7 @@ def test_login_successful_and_approved(client: TestClient, db_session: Session):
     db_session.commit()
     
     # Act
-    response = client.post("/auth/login", json=payload)
+    response = client.post("/api/auth/login", json=payload)
     
     # Assert
     assert response.status_code == 200

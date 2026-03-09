@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
 from app.models import AppSetting, CloudCatalogItem, Demand, User  # noqa: F401
+from app.api_v1.endpoints import ui
 from app.api_v1.router import api_router
 
 app = FastAPI(title=settings.app_name, version="1.0.0")
@@ -135,4 +136,5 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-app.include_router(api_router)
+app.include_router(ui.router)
+app.include_router(api_router, prefix="/api")
