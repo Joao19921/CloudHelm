@@ -7,8 +7,8 @@ services:
     branch: main
     autoDeploy: true
     healthCheckPath: /health
-    dockerfilePath: ./platform-v1/backend/Dockerfile
-    dockerContext: ./platform-v1/backend
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: ./api
     envVars:
       - key: APP_NAME
         value: CloudHelm
