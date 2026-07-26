@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="CloudHelmDemandDefinitions" targetNamespace="https://cloudhelm.dev/bpmn">
+  <process id="CloudHelmDemandProcess" name="Análise e recomendação de infraestrutura" isExecutable="false">
+    <startEvent id="start" name="Demanda iniciada"/>
+    <exclusiveGateway id="auth" name="JWT válido?"/>
+    <task id="login" name="Autenticar via GitHub OAuth"/>
+    <task id="capture" name="Registrar demanda"/>
+    <task id="catalog" name="Carregar catálogo cloud"/>
+    <exclusiveGateway id="catalogAvailable" name="Catálogo disponível?"/>
+    <task id="baseline" name="Usar preços baseline"/>
+    <task id="estimate" name="Estimar custos"/>
+    <task id="rank" name="Classificar provedores"/>
+    <exclusiveGateway id="llmConfigured" name="LLM configurado?"/>
+    <task id="llmBrief" name="Gerar briefing arquitetural"/>
+    <task id="deterministicBrief" name="Gerar briefing determinístico"/>
+    <task id="terraform" name="Montar Terraform sugerido"/>
+    <task id="persist" name="Registrar resultado e auditoria"/>
+    <task id="present" name="Apresentar recomendação"/>
+    <endEvent id="end" name="Processo concluído"/>
+
+    <sequenceFlow id="f1" sourceRef="start" targetRef="auth"/>
+    <sequenceFlow id="f2" sourceRef="auth" targetRef="capture" name="Sim"/>
+    <sequenceFlow id="f3" sourceRef="auth" targetRef="login" name="Não"/>
+    <sequenceFlow id="f4" sourceRef="login" targetRef="auth"/>
+    <sequenceFlow id="f5" sourceRef="capture" targetRef="catalog"/>
+    <sequenceFlow id="f6" sourceRef="catalog" targetRef="catalogAvailable"/>
+    <sequenceFlow id="f7" sourceRef="catalogAvailable" targetRef="estimate" name="Sim"/>
+    <sequenceFlow id="f8" sourceRef="catalogAvailable" targetRef="baseline" name="Não"/>
+    <sequenceFlow id="f9" sourceRef="baseline" targetRef="estimate"/>
+    <sequenceFlow id="f10" sourceRef="estimate" targetRef="rank"/>
+    <sequenceFlow id="f11" sourceRef="rank" targetRef="llmConfigured"/>
+    <sequenceFlow id="f12" sourceRef="llmConfigured" targetRef="llmBrief" name="Sim"/>
+    <sequenceFlow id="f13" sourceRef="llmConfigured" targetRef="deterministicBrief" name="Não"/>
+    <sequenceFlow id="f14" sourceRef="llmBrief" targetRef="terraform"/>
+    <sequenceFlow id="f15" sourceRef="deterministicBrief" targetRef="terraform"/>
+    <sequenceFlow id="f16" sourceRef="terraform" targetRef="persist"/>
+    <sequenceFlow id="f17" sourceRef="persist" targetRef="present"/>
+    <sequenceFlow id="f18" sourceRef="present" targetRef="end"/>
+  </process>
+</definitions>
