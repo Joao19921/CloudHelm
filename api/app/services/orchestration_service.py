@@ -142,9 +142,7 @@ def orchestrate_demand(
         preferred_provider=preferred_provider,
         catalog_summary=catalog_summary,
     )
-    selected_provider = provider if provider in {"aws", "gcp", "azure"} else ranking["recommended_provider"]
-    if selected_provider == "oci":
-        selected_provider = ranking["items"][1]["provider"] if len(ranking["items"]) > 1 else "aws"
+    selected_provider = provider if provider in {"aws", "gcp", "azure", "oci"} else ranking["recommended_provider"]
 
     llm_result = LLMService.generate_brief(
         raw_input=raw_input,
