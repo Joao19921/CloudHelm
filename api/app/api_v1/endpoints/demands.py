@@ -25,7 +25,7 @@ from app.services.orchestration_service import orchestrate_demand
 from app.services.terraform_service import build_terraform_modules
 from app.services.transcription_service import TranscriptionService
 
-router = APIRouter(prefix="/api", tags=["demands"])
+router = APIRouter(tags=["demands"])
 
 
 @router.get("/providers")
