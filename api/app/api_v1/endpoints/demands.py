@@ -35,6 +35,7 @@ def list_providers():
             {"id": "aws", "name": "Amazon Web Services"},
             {"id": "gcp", "name": "Google Cloud Platform"},
             {"id": "azure", "name": "Microsoft Azure"},
+            {"id": "oci", "name": "Oracle Cloud Infrastructure"},
             {"id": "auto", "name": "Auto (Ranking Inteligente)"},
         ]
     }
@@ -42,7 +43,7 @@ def list_providers():
 
 @router.get("/terraform/{provider}")
 def terraform_provider(provider: str):
-    if provider not in {"aws", "gcp", "azure"}:
+    if provider not in {"aws", "gcp", "azure", "oci"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid provider.")
     return build_terraform_modules(provider)
 
