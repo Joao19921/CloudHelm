@@ -1,4 +1,4 @@
-from typing import Any
+﻿from typing import Any
 
 
 def build_terraform_modules(provider: str) -> dict[str, Any]:
