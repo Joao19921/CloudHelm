@@ -14,7 +14,7 @@ from app.schemas.backoffice import BackofficeUserItem, LLMConfigPayload, LLMConf
 from app.services.audit_service import AuditService
 from app.services.email_service import get_email_service
 
-router = APIRouter(prefix="/api/backoffice", tags=["backoffice"])
+router = APIRouter(prefix="/backoffice", tags=["backoffice"])
 
 
 def _mask_secret(secret: str) -> str:
@@ -81,14 +81,14 @@ def approve_user(
     user = get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
-    
+
     # Update user
     user.is_approved = True
     user.approved_at = datetime.now(timezone.utc)
     db.add(user)
     db.commit()
     db.refresh(user)
-    
+
     # Log action
     AuditService.log_action(
         db=db,
@@ -97,12 +97,12 @@ def approve_user(
         admin_user_id=admin.id,
         target_user_id=user.id,
     )
-    
+
     # Send email notification
     email_svc = get_email_service()
     if email_svc:
         email_svc.send_approval_notification(user.email, user.name)
-    
+
     return BackofficeUserDetailedItem(
         id=user.id,
         name=user.name,
@@ -130,7 +130,7 @@ def bulk_approve_users(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No user IDs provided.",
         )
-    
+
     approved_count = 0
     for user_id in request.user_ids:
         user = get_user_by_id(db, user_id)
@@ -138,7 +138,7 @@ def bulk_approve_users(
             user.is_approved = True
             user.approved_at = datetime.now(timezone.utc)
             db.add(user)
-            
+
             # Log action
             AuditService.log_action(
                 db=db,
@@ -147,14 +147,14 @@ def bulk_approve_users(
                 admin_user_id=admin.id,
                 target_user_id=user.id,
             )
-            
+
             # Send email
             email_svc = get_email_service()
             if email_svc:
                 email_svc.send_approval_notification(user.email, user.name)
-            
+
             approved_count += 1
-    
+
     db.commit()
     return {
         "message": f"Approved {approved_count}/{len(request.user_ids)} users",
@@ -177,13 +177,13 @@ def revoke_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot revoke admin access.",
         )
-    
+
     user.is_approved = False
     user.access_expires_at = None
     db.add(user)
     db.commit()
     db.refresh(user)
-    
+
     # Log action
     AuditService.log_action(
         db=db,
@@ -192,12 +192,12 @@ def revoke_user(
         admin_user_id=admin.id,
         target_user_id=user.id,
     )
-    
+
     # Send email
     email_svc = get_email_service()
     if email_svc:
         email_svc.send_access_revoked_notification(user.email, user.name)
-    
+
     return BackofficeUserDetailedItem(
         id=user.id,
         name=user.name,
@@ -226,21 +226,21 @@ def change_user_role(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid role. Must be 'admin', 'reviewer', or 'user'.",
         )
-    
+
     user = get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
-    
+
     old_role = user.role
     user.role = request.role
-    
+
     # Update is_admin for backwards compatibility
     user.is_admin = (request.role == "admin")
-    
+
     db.add(user)
     db.commit()
     db.refresh(user)
-    
+
     # Log action
     AuditService.log_action(
         db=db,
@@ -250,12 +250,12 @@ def change_user_role(
         target_user_id=user.id,
         details={"old_role": old_role, "new_role": request.role},
     )
-    
+
     # Send email
     email_svc = get_email_service()
     if email_svc:
         email_svc.send_role_change_notification(user.email, user.name, request.role)
-    
+
     return BackofficeUserDetailedItem(
         id=user.id,
         name=user.name,
@@ -283,10 +283,10 @@ def grant_temporary_access(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Days must be between 1 and 90.",
         )
-    
+
     expires_at = datetime.now(timezone.utc) + timedelta(days=request.days)
     updated_count = 0
-    
+
     for user_id in request.user_ids:
         user = get_user_by_id(db, user_id)
         if user:
@@ -295,7 +295,7 @@ def grant_temporary_access(
                 user.approved_at = datetime.now(timezone.utc)
             user.access_expires_at = expires_at
             db.add(user)
-            
+
             # Log action
             AuditService.log_action(
                 db=db,
@@ -305,9 +305,9 @@ def grant_temporary_access(
                 target_user_id=user.id,
                 details={"days": request.days, "expires_at": expires_at.isoformat()},
             )
-            
+
             updated_count += 1
-    
+
     db.commit()
     return {
         "message": f"Temporary access granted to {updated_count} user(s)",
