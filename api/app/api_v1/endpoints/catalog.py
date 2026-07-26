@@ -18,9 +18,9 @@ def sync_catalog(
     _current_user: User = Depends(get_current_user),
 ):
     providers = [provider.lower() for provider in payload.providers]
-    providers = [provider for provider in providers if provider in {"aws", "gcp", "azure"}]
+    providers = [provider for provider in providers if provider in {"aws", "gcp", "azure", "oci"}]
     if not providers:
-        providers = ["aws", "gcp", "azure"]
+        providers = ["aws", "gcp", "azure", "oci"]
 
     engine = CloudMasterEngine()
     synced, exported_file = engine.sync_database(
