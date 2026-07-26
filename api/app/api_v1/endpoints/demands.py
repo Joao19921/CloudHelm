@@ -7,7 +7,7 @@ from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.repositories.app_settings_repository import get_llm_runtime_config
-from app.repositories.catalog_repository import providers_summary
+from app.repositories.catalog_repository import list_catalog_items, providers_summary
 from app.repositories.demand_repository import (
     create_demand,
     get_demand_by_id,
@@ -35,6 +35,7 @@ def list_providers():
             {"id": "aws", "name": "Amazon Web Services"},
             {"id": "gcp", "name": "Google Cloud Platform"},
             {"id": "azure", "name": "Microsoft Azure"},
+            {"id": "oci", "name": "Oracle Cloud Infrastructure"},
             {"id": "auto", "name": "Auto (Ranking Inteligente)"},
         ]
     }
@@ -42,7 +43,7 @@ def list_providers():
 
 @router.get("/terraform/{provider}")
 def terraform_provider(provider: str):
-    if provider not in {"aws", "gcp", "azure"}:
+    if provider not in {"aws", "gcp", "azure", "oci"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid provider.")
     return build_terraform_modules(provider)
 
@@ -114,6 +115,7 @@ def orchestrate_demand_api(
         raw_input=demand.raw_input,
         provider=payload.provider,
         catalog_summary=providers_summary(db),
+        catalog_items=list_catalog_items(db=db, provider="all", search="", limit=500),
         llm_provider=llm_provider,
         llm_api_key=llm_api_key,
         llm_model=llm_config.get("model") or None,
