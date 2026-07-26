@@ -1,17 +1,35 @@
-# Architecture Guidelines
+﻿# Arquitetura CloudHelm
 
-This document outlines the core principles, frameworks, and reference materials for the architectural design of this project. All new development, especially concerning cloud infrastructure, must adhere to these guidelines.
+Este arquivo resume as regras arquiteturais do projeto. A documentacao operacional detalhada fica em `docs/`.
 
-## Core Principles
+## Principios
 
-- **Infrastructure as Code (IaC):** All infrastructure must be defined, provisioned, and managed using code. Manual changes to the production environment are strictly forbidden.
-- **Well-Architected Framework:** Design decisions should be guided by established cloud architecture frameworks to ensure security, reliability, performance, and cost-effectiveness.
+- Separar frontend estatico, backend API e infraestrutura como codigo.
+- Manter segredos fora do Git e sempre em variaveis de ambiente.
+- Usar banco gerenciado em producao; SQLite e apenas local.
+- Priorizar custo baixo para MVP, sem bloquear evolucao futura.
+- Documentar rotas e decisoes arquiteturais junto com mudancas relevantes.
 
-## Key Reference Documents
+## Topologia atual
 
-The following resources form our primary knowledge base for cloud architecture and IaC. They must be consulted when designing and implementing new infrastructure.
+```mermaid
+flowchart LR
+    FE[GitHub Pages frontend] --> API[Render FastAPI]
+    API --> DB[(Supabase Postgres)]
+    API --> Cloud[Catalogos cloud]
+    API --> LLM[OpenAI/Gemini opcionais]
+```
 
-- **[HashiCorp Well-Architected Framework](https://developer.hashicorp.com/well-architected-framework)**: Provides the foundational best practices for managing our infrastructure.
-- **[Terraform Documentation](https://developer.hashicorp.com/terraform)**: The official documentation for our chosen IaC tool.
+## Fontes de verdade
 
-*This document is a living artifact and should be updated as our architectural standards evolve.*
+- `docs/ARCHITECTURE.md`: arquitetura atual.
+- `docs/API_ROUTES.md`: contratos HTTP.
+- `docs/SYSTEM_FLOW.md`: fluxos funcionais.
+- `docs/DEPLOYMENT_FREE.md`: procedimento de deploy gratuito.
+
+## Regras de implementacao
+
+- Novas rotas entram em `api/app/api_v1/endpoints/` e sao registradas em `api/app/api_v1/router.py`.
+- Nao duplicar `/api` em routers; o prefixo global fica em `api/app/main.py`.
+- Novas configuracoes devem passar por `api/app/core/config.py` e `.env.example`.
+- Artefatos gerados, bancos locais e arquivos `.env` nao devem ser versionados.

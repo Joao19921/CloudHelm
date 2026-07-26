@@ -1,6 +1,7 @@
+import logging
 import secrets
 from datetime import datetime, timezone
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -30,6 +31,7 @@ from app.schemas.auth import (
 from app.services.email_service import get_email_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 def _github_oauth_enabled() -> bool:
@@ -66,7 +68,13 @@ def _exchange_github_code_for_token(code: str) -> str:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"GitHub OAuth failed: {exc}") from exc
     token = data.get("access_token")
     if not token:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GitHub token exchange failed.")
+        error = data.get("error") or "unknown_error"
+        description = data.get("error_description") or "GitHub did not return an access token."
+        logger.warning("GitHub token exchange failed: %s - %s", error, description)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"GitHub token exchange failed: {description}",
+        )
     return token
 
 
@@ -171,10 +179,21 @@ def github_callback(
     code: str = Query(..., min_length=10),
     db: Session = Depends(get_db),
 ):
+    frontend_base = settings.frontend_public_url.rstrip("/")
     if not _github_oauth_enabled():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GitHub OAuth not configured.")
-    token = _exchange_github_code_for_token(code)
-    github_id, github_login, display_name, email = _fetch_github_profile(token)
+        return RedirectResponse(
+            url=f"{frontend_base}/?auth_error={quote('GitHub OAuth not configured')}",
+            status_code=status.HTTP_302_FOUND,
+        )
+    try:
+        token = _exchange_github_code_for_token(code)
+        github_id, github_login, display_name, email = _fetch_github_profile(token)
+    except HTTPException as exc:
+        logger.warning("GitHub OAuth callback failed: %s", exc.detail)
+        return RedirectResponse(
+            url=f"{frontend_base}/?auth_error={quote(str(exc.detail))}",
+            status_code=status.HTTP_302_FOUND,
+        )
 
     existing = get_user_by_github_id(db, github_id) or get_user_by_email(db, email)
     admin_by_allowlist = github_login.lower() in settings.github_admin_allowlist
@@ -205,7 +224,6 @@ def github_callback(
             is_approved=admin_by_allowlist or bootstrap_admin,
         )
 
-    frontend_base = settings.frontend_public_url.rstrip("/")
     if not user.is_approved:
         return RedirectResponse(url=f"{frontend_base}/?pending=approval", status_code=status.HTTP_302_FOUND)
 

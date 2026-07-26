@@ -52,6 +52,7 @@ function loadTokenFromUrlOrStorage() {
   const url = new URL(window.location.href);
   const token = url.searchParams.get("token");
   const pending = url.searchParams.get("pending");
+  const authError = url.searchParams.get("auth_error");
 
   if (token) {
     saveToken(token);
@@ -64,6 +65,12 @@ function loadTokenFromUrlOrStorage() {
   if (pending) {
     setStatus("Acesso pendente. Aguarde aprovacao do administrador CloudHelm.", true);
     url.searchParams.delete("pending");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  if (authError) {
+    setStatus(`Falha no login GitHub: ${authError}`, true);
+    url.searchParams.delete("auth_error");
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
   }
 }

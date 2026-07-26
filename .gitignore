@@ -1,11 +1,26 @@
-# Ignore
+﻿# Dependencies
 node_modules/
+
+# Local tooling and scratch files
 .temp_ag_kit/
 antigravity-doc
-# tests
 others
 
+# Environment files
+.env
+.env.*
 api/.env
 api/.env.*
 !api/.env.example
 frontend/config.local.js
+
+# Local databases and generated exports
+*.db
+*.sqlite
+*.sqlite3
+api/dist_cloud_data/
+
+# Runtime/cache artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/

@@ -24,7 +24,7 @@ Crie um OAuth App no GitHub com:
 
 ```text
 Homepage URL: https://joao19921.github.io/CloudHelm
-Authorization callback URL: https://cloudhelm-platform-c7nv.onrender.com/api/auth/github/callback
+Authorization callback URL: https://cloudhelm-platform.onrender.com/api/auth/github/callback
 ```
 
 Depois configure no Render:
@@ -32,7 +32,7 @@ Depois configure no Render:
 ```text
 GITHUB_CLIENT_ID=<client id>
 GITHUB_CLIENT_SECRET=<client secret>
-GITHUB_REDIRECT_URI=https://cloudhelm-platform-c7nv.onrender.com/api/auth/github/callback
+GITHUB_REDIRECT_URI=https://cloudhelm-platform.onrender.com/api/auth/github/callback
 GITHUB_ADMIN_LOGINS=Joao19921
 ```
 
@@ -45,10 +45,10 @@ Variaveis obrigatorias no Render:
 ```text
 DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/postgres?sslmode=require
 FRONTEND_PUBLIC_URL=https://joao19921.github.io/CloudHelm
-CORS_ORIGINS=https://joao19921.github.io,https://joao19921.github.io/CloudHelm,https://cloudhelm-platform-c7nv.onrender.com
+CORS_ORIGINS=https://joao19921.github.io,https://joao19921.github.io/CloudHelm,https://cloudhelm-platform.onrender.com
 GITHUB_CLIENT_ID=<client id>
 GITHUB_CLIENT_SECRET=<client secret>
-GITHUB_REDIRECT_URI=https://cloudhelm-platform-c7nv.onrender.com/api/auth/github/callback
+GITHUB_REDIRECT_URI=https://cloudhelm-platform.onrender.com/api/auth/github/callback
 GITHUB_ADMIN_LOGINS=Joao19921
 ```
 
@@ -63,7 +63,7 @@ GCP_BILLING_API_KEY=<somente se quiser GCP Billing Catalog real>
 O backend deve responder em:
 
 ```text
-https://cloudhelm-platform-c7nv.onrender.com/health
+https://cloudhelm-platform.onrender.com/health
 ```
 
 ## 4. GitHub Pages
@@ -84,7 +84,7 @@ https://joao19921.github.io/CloudHelm/
 
 ## 5. Checklist de Validacao
 
-1. Abra `https://cloudhelm-platform-c7nv.onrender.com/health` e confirme `{"status":"ok"}`.
+1. Abra `https://cloudhelm-platform.onrender.com/health` e confirme `{"status":"ok"}`.
 2. Abra `https://joao19921.github.io/CloudHelm/`.
 3. Clique em `Entrar com GitHub`.
 4. Confirme retorno para o frontend com token.
