@@ -94,6 +94,61 @@ class CloudMasterEngine:
             ("Amazon S3", "S3 Standard Storage", 0.0230, "GB-Mo"),
             ("Amazon CloudWatch", "CloudWatch Logs Ingestion", 0.50, "GB"),
         ]
+        try:
+            import boto3
+            client = boto3.client("pricing", region_name="us-east-1")
+            response = client.get_products(
+                ServiceCode="AmazonEC2",
+                Filters=[
+                    {"Type": "TERM_MATCH", "Field": "operatingSystem", "Value": "Linux"},
+                    {"Type": "TERM_MATCH", "Field": "tenancy", "Value": "Shared"},
+                    {"Type": "TERM_MATCH", "Field": "capacitystatus", "Value": "Used"},
+                ],
+                MaxResults=min(limit, 100),
+            )
+            items = []
+            price_list = response.get("PriceList", [])
+            for price_str in price_list:
+                price_data = json.loads(price_str)
+                product = price_data.get("product", {})
+                attributes = product.get("attributes", {})
+
+                terms = price_data.get("terms", {}).get("OnDemand", {})
+                if not terms:
+                    continue
+                offer = list(terms.values())[0]
+                price_dimensions = offer.get("priceDimensions", {})
+                if not price_dimensions:
+                    continue
+                dimension = list(price_dimensions.values())[0]
+
+                price_per_unit = list(dimension.get("pricePerUnit", {}).values())[0]
+                unit = dimension.get("unit", "Hrs")
+
+                service = attributes.get("servicecode", "Amazon EC2")
+                instance_type = attributes.get("instanceType", "General")
+                display_name = f"EC2 {instance_type} ({attributes.get('vcpu', 'N/A')} vCPUs, {attributes.get('memory', 'N/A')})"
+
+                items.append(
+                    {
+                        "provider": "aws",
+                        "service": service,
+                        "display_name": display_name,
+                        "region": attributes.get("regionCode", "us-east-1"),
+                        "price": float(price_per_unit),
+                        "currency": "USD",
+                        "unit": unit,
+                        "icon": self.get_smart_icon(service),
+                        "source": "aws-pricing-api",
+                    }
+                )
+                if len(items) >= limit:
+                    break
+            if items:
+                return items
+        except Exception:
+            pass
+
         return [
             {
                 "provider": "aws",
@@ -117,6 +172,71 @@ class CloudMasterEngine:
             ("Memorystore", "Redis Basic Tier", 0.0350, "Hrs"),
             ("Cloud Logging", "Log Ingestion", 0.50, "GB"),
         ]
+
+        from app.core.config import settings
+        api_key = settings.gcp_billing_api_key
+
+        if api_key:
+            try:
+                services_url = f"https://cloudbilling.googleapis.com/v1/services?key={api_key}"
+                resp = requests.get(services_url, timeout=15)
+                if resp.status_code == 200:
+                    services = resp.json().get("services", [])
+                    items = []
+                    for svc in services:
+                        svc_id = svc.get("serviceId")
+                        svc_name = svc.get("displayName")
+
+                        if svc_name not in ["Compute Engine", "Cloud Storage", "Cloud SQL"]:
+                            continue
+
+                        skus_url = f"https://cloudbilling.googleapis.com/v1/services/{svc_id}/skus?key={api_key}"
+                        skus_resp = requests.get(skus_url, timeout=15)
+                        if skus_resp.status_code != 200:
+                            continue
+
+                        skus = skus_resp.json().get("skus", [])
+                        for sku in skus:
+                            pricing_info = sku.get("pricingInfo", [])
+                            if not pricing_info:
+                                continue
+
+                            pricing_expression = pricing_info[0].get("pricingExpression", {})
+                            tiered_rates = pricing_expression.get("tieredRates", [])
+                            if not tiered_rates:
+                                continue
+
+                            unit = pricing_expression.get("usageUnit", "Unit")
+                            unit_price = tiered_rates[0].get("unitPrice", {})
+                            nanos = unit_price.get("nanos", 0)
+                            units = int(unit_price.get("units", 0))
+                            price_val = units + (nanos / 1e9)
+
+                            regions = sku.get("serviceRegions", ["us-central1"])
+                            region = regions[0] if regions else "us-central1"
+
+                            items.append(
+                                {
+                                    "provider": "gcp",
+                                    "service": svc_name,
+                                    "display_name": sku.get("description", sku.get("name")),
+                                    "region": region,
+                                    "price": float(price_val),
+                                    "currency": "USD",
+                                    "unit": unit,
+                                    "icon": self.get_smart_icon(svc_name),
+                                    "source": "gcp-billing-api",
+                                }
+                            )
+                            if len(items) >= limit:
+                                break
+                        if len(items) >= limit:
+                            break
+                    if items:
+                        return items
+            except Exception:
+                pass
+
         return [
             {
                 "provider": "gcp",
@@ -132,6 +252,63 @@ class CloudMasterEngine:
             for svc, name, price, unit in seeded[:limit]
         ]
 
+    def fetch_oci_data(self, limit: int = 20) -> list[dict]:
+        url = "https://apexapps.oracle.com/pls/apex/cetools/api/v1/products/"
+        try:
+            resp = requests.get(url, timeout=20)
+            if resp.status_code != 200:
+                return []
+
+            raw_items = resp.json().get("items", [])
+            items = []
+            for item in raw_items:
+                localizations = item.get("currencyCodeLocalizations", [])
+
+                usd_localization = None
+                for loc in localizations:
+                    if loc.get("currencyCode") == "USD":
+                        usd_localization = loc
+                        break
+
+                if not usd_localization:
+                    continue
+
+                prices = usd_localization.get("prices", [])
+                if not prices:
+                    continue
+
+                price_val = None
+                for price in prices:
+                    if price.get("model") == "PAY_AS_YOU_GO":
+                        price_val = price.get("value")
+                        break
+
+                if price_val is None:
+                    continue
+
+                service = item.get("serviceCategory", "General")
+                display_name = item.get("displayName", "OCI Product")
+                metric = item.get("metricName", "Unit")
+
+                items.append(
+                    {
+                        "provider": "oci",
+                        "service": service,
+                        "display_name": display_name,
+                        "region": "global",
+                        "price": float(price_val),
+                        "currency": "USD",
+                        "unit": metric,
+                        "icon": self.get_smart_icon(service),
+                        "source": "oci-retail-api",
+                    }
+                )
+                if len(items) >= limit:
+                    break
+            return items
+        except Exception:
+            return []
+
     def collect(self, providers: list[str], limit_per_provider: int) -> dict[str, list[dict]]:
         self.download_all_icons()
         data: dict[str, list[dict]] = {}
@@ -142,6 +319,8 @@ class CloudMasterEngine:
                 data[provider] = self.fetch_aws_data(limit_per_provider)
             elif provider == "gcp":
                 data[provider] = self.fetch_gcp_data(limit_per_provider)
+            elif provider == "oci":
+                data[provider] = self.fetch_oci_data(limit_per_provider)
         return data
 
     def export_flat_json(self, provider_data: dict[str, list[dict]]) -> str:
