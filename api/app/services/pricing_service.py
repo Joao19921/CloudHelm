@@ -1,291 +1,234 @@
 """
-Cloud Pricing & Architecture Intelligence Service
-Fetches real-time pricing and architecture recommendations from AWS, GCP, and Azure.
+Cloud pricing and architecture intelligence.
+
+The pricing estimator consumes normalized catalog records collected from the
+official provider price APIs in cloud_catalog_service.py. When the catalog has
+no usable match for a component, it falls back to explicit baseline rates so the
+orchestration flow remains deterministic in local development.
 """
 
-import logging
-from datetime import datetime, timedelta
-from functools import lru_cache
+from dataclasses import dataclass
+from typing import Any
 
-import requests
+from app.models.cloud_catalog_item import CloudCatalogItem
+from app.schemas.pricing import PricingEstimateRequest
 
-logger = logging.getLogger(__name__)
+
+SUPPORTED_PROVIDERS = {"aws", "gcp", "azure", "oci"}
+
+
+@dataclass(frozen=True)
+class ComponentRule:
+    name: str
+    keywords: tuple[str, ...]
+    quantity_field: str
+
+
+COMPONENT_RULES = (
+    ComponentRule("compute", ("compute", "ec2", "virtual machine", "vm", "instance"), "compute_units"),
+    ComponentRule("database", ("rds", "sql", "database", "mysql", "postgres"), "database_units"),
+    ComponentRule("cache", ("redis", "cache", "memorystore", "elasticache"), "cache_units"),
+    ComponentRule("storage", ("storage", "s3", "object", "bucket", "block volume"), "storage_gb"),
+    ComponentRule("network", ("cdn", "cloudfront", "front door", "load balancer", "data transfer"), "data_transfer_gb"),
+    ComponentRule("observability", ("logging", "monitoring", "cloudwatch", "log analytics"), "observability_gb"),
+)
+
+
+FALLBACK_RATES: dict[str, dict[str, dict[str, Any]]] = {
+    "aws": {
+        "compute": {"service": "Amazon EC2", "display_name": "EC2 On-Demand baseline", "unit": "Hrs", "price": 0.0416},
+        "database": {"service": "Amazon RDS", "display_name": "RDS MySQL baseline", "unit": "Hrs", "price": 0.032},
+        "cache": {"service": "Amazon ElastiCache", "display_name": "Redis small node", "unit": "Hrs", "price": 0.027},
+        "storage": {"service": "Amazon S3", "display_name": "S3 Standard Storage", "unit": "GB-Mo", "price": 0.023},
+        "network": {"service": "Amazon CloudFront", "display_name": "CloudFront transfer baseline", "unit": "GB", "price": 0.085},
+        "observability": {"service": "Amazon CloudWatch", "display_name": "CloudWatch Logs ingestion", "unit": "GB", "price": 0.5},
+    },
+    "gcp": {
+        "compute": {"service": "Compute Engine", "display_name": "E2 shared core baseline", "unit": "Hrs", "price": 0.0335},
+        "database": {"service": "Cloud SQL", "display_name": "Cloud SQL MySQL baseline", "unit": "Hrs", "price": 0.041},
+        "cache": {"service": "Memorystore", "display_name": "Redis basic tier", "unit": "Hrs", "price": 0.035},
+        "storage": {"service": "Cloud Storage", "display_name": "Standard Storage", "unit": "GB-Mo", "price": 0.02},
+        "network": {"service": "Cloud CDN", "display_name": "Cloud CDN transfer baseline", "unit": "GB", "price": 0.085},
+        "observability": {"service": "Cloud Logging", "display_name": "Log ingestion", "unit": "GB", "price": 0.5},
+    },
+    "azure": {
+        "compute": {"service": "Virtual Machines", "display_name": "Virtual Machine B2s baseline", "unit": "1 Hour", "price": 0.052},
+        "database": {"service": "SQL Database", "display_name": "SQL Database baseline", "unit": "1 Hour", "price": 0.051},
+        "cache": {"service": "Cache for Redis", "display_name": "Redis Basic baseline", "unit": "1 Hour", "price": 0.0149},
+        "storage": {"service": "Storage", "display_name": "Storage LRS baseline", "unit": "1 GB/Month", "price": 0.0184},
+        "network": {"service": "Azure Front Door", "display_name": "Front Door transfer baseline", "unit": "1 GB", "price": 0.087},
+        "observability": {"service": "Monitor", "display_name": "Log Analytics ingestion", "unit": "1 GB", "price": 0.5},
+    },
+    "oci": {
+        "compute": {"service": "Compute", "display_name": "OCI Compute baseline", "unit": "OCPU Hour", "price": 0.0255},
+        "database": {"service": "Database", "display_name": "OCI Database baseline", "unit": "OCPU Hour", "price": 0.1613},
+        "cache": {"service": "Cache", "display_name": "OCI cache baseline", "unit": "Hour", "price": 0.03},
+        "storage": {"service": "Storage", "display_name": "OCI Object Storage baseline", "unit": "GB Month", "price": 0.0255},
+        "network": {"service": "Networking", "display_name": "OCI outbound transfer baseline", "unit": "GB", "price": 0.0085},
+        "observability": {"service": "Observability", "display_name": "OCI logging baseline", "unit": "GB", "price": 0.05},
+    },
+}
+
+
+SIZE_MULTIPLIERS = {"small": 1.0, "medium": 2.5, "large": 6.0}
+
+
+def build_pricing_request_from_text(raw_input: str) -> PricingEstimateRequest:
+    text = raw_input.lower()
+    workload_size = "small"
+    if any(term in text for term in ("alta escala", "large", "enterprise", "milhoes", "milhões", "1000", "10000")):
+        workload_size = "large"
+    elif any(term in text for term in ("media escala", "média escala", "medium", "centenas", "500")):
+        workload_size = "medium"
+
+    multiplier = SIZE_MULTIPLIERS[workload_size]
+    return PricingEstimateRequest(
+        workload_size=workload_size,
+        compute_units=max(1, round(multiplier)),
+        database_units=1 if any(term in text for term in ("banco", "database", "sql", "dados")) else 0,
+        cache_units=1 if any(term in text for term in ("cache", "redis", "sessao", "sessão")) else 0,
+        storage_gb=round(100 * multiplier),
+        data_transfer_gb=round(100 * multiplier),
+        observability_gb=round(20 * multiplier),
+    )
+
+
+def estimate_infrastructure_costs(
+    catalog_items: list[CloudCatalogItem] | list[dict[str, Any]] | None,
+    request: PricingEstimateRequest,
+) -> dict[str, Any]:
+    providers = [provider.lower() for provider in request.providers if provider.lower() in SUPPORTED_PROVIDERS]
+    if not providers:
+        providers = ["aws", "gcp", "azure", "oci"]
+
+    normalized_items = [_normalize_catalog_item(item) for item in catalog_items or []]
+    estimates = {provider: _estimate_provider(provider, normalized_items, request) for provider in providers}
+
+    return {
+        "currency": "USD",
+        "monthly_estimate": {
+            provider: {"min": value["min"], "max": value["max"], "total": value["monthly_total"]}
+            for provider, value in estimates.items()
+        },
+        "providers": estimates,
+        "assumptions": {
+            "workload_size": request.workload_size,
+            "monthly_hours": request.monthly_hours,
+            "compute_units": request.compute_units,
+            "database_units": request.database_units,
+            "cache_units": request.cache_units,
+            "storage_gb": request.storage_gb,
+            "data_transfer_gb": request.data_transfer_gb,
+            "observability_gb": request.observability_gb,
+        },
+        "notes": [
+            "Valores calculados a partir do catalogo sincronizado das APIs oficiais quando ha correspondencia de SKU.",
+            "Fallbacks sao usados por componente quando o catalogo local ainda nao tem dados suficientes.",
+            "Estimativa nao inclui impostos, descontos privados, Savings Plans, reservas ou compromissos empresariais.",
+        ],
+    }
+
+
+def _normalize_catalog_item(item: CloudCatalogItem | dict[str, Any]) -> dict[str, Any]:
+    if isinstance(item, dict):
+        return item
+    return {
+        "id": item.id,
+        "provider": item.provider,
+        "service": item.service,
+        "display_name": item.display_name,
+        "price": item.price,
+        "currency": item.currency,
+        "unit": item.unit,
+        "source": item.source,
+    }
+
+
+def _estimate_provider(provider: str, catalog_items: list[dict[str, Any]], request: PricingEstimateRequest) -> dict[str, Any]:
+    provider_items = [item for item in catalog_items if item.get("provider") == provider and item.get("currency", "USD") == "USD"]
+    components = []
+    used_fallback = False
+
+    for rule in COMPONENT_RULES:
+        quantity = float(getattr(request, rule.quantity_field))
+        if quantity <= 0:
+            continue
+
+        matched = _find_catalog_match(provider_items, rule)
+        if matched:
+            component = _build_component(rule.name, matched, quantity, request.monthly_hours)
+        else:
+            used_fallback = True
+            fallback = FALLBACK_RATES[provider][rule.name]
+            component = _build_fallback_component(rule.name, fallback, quantity, request.monthly_hours)
+        components.append(component)
+
+    total = round(sum(component["monthly_cost"] for component in components), 2)
+    return {
+        "provider": provider,
+        "currency": "USD",
+        "monthly_total": total,
+        "min": round(total * 0.85, 2),
+        "max": round(total * 1.25, 2),
+        "components": components,
+        "used_fallback": used_fallback,
+        "sources": sorted({component["source"] for component in components}),
+    }
+
+
+def _find_catalog_match(items: list[dict[str, Any]], rule: ComponentRule) -> dict[str, Any] | None:
+    candidates = []
+    for item in items:
+        searchable = f"{item.get('service', '')} {item.get('display_name', '')} {item.get('unit', '')}".lower()
+        if any(keyword in searchable for keyword in rule.keywords):
+            candidates.append(item)
+    if not candidates:
+        return None
+    return min(candidates, key=lambda item: float(item.get("price") or 0))
+
+
+def _build_component(name: str, item: dict[str, Any], quantity: float, monthly_hours: int) -> dict[str, Any]:
+    unit = item.get("unit", "Unit")
+    unit_price = float(item.get("price") or 0)
+    billable_quantity = _billable_quantity(unit=unit, quantity=quantity, monthly_hours=monthly_hours)
+    return {
+        "component": name,
+        "catalog_item_id": item.get("id"),
+        "service": item.get("service", name),
+        "display_name": item.get("display_name", name),
+        "unit": unit,
+        "unit_price": unit_price,
+        "quantity": billable_quantity,
+        "monthly_cost": round(unit_price * billable_quantity, 2),
+        "source": item.get("source", "catalog"),
+    }
+
+
+def _build_fallback_component(name: str, item: dict[str, Any], quantity: float, monthly_hours: int) -> dict[str, Any]:
+    unit = item["unit"]
+    unit_price = float(item["price"])
+    billable_quantity = _billable_quantity(unit=unit, quantity=quantity, monthly_hours=monthly_hours)
+    return {
+        "component": name,
+        "catalog_item_id": None,
+        "service": item["service"],
+        "display_name": item["display_name"],
+        "unit": unit,
+        "unit_price": unit_price,
+        "quantity": billable_quantity,
+        "monthly_cost": round(unit_price * billable_quantity, 2),
+        "source": "fallback-baseline",
+    }
+
+
+def _billable_quantity(unit: str, quantity: float, monthly_hours: int) -> float:
+    normalized = unit.lower()
+    if "hour" in normalized or "hrs" in normalized or normalized == "hr" or "ocpu" in normalized:
+        return quantity * monthly_hours
+    return quantity
 
 
 class CloudPricingService:
-    """Fetches and caches cloud pricing data from official APIs."""
+    """Compatibility facade for older imports."""
 
-    def __init__(self):
-        self.cache_ttl = timedelta(hours=6)  # Cache for 6 hours
-        self.last_update = {}
-
-    @staticmethod
-    def fetch_aws_pricing() -> dict:
-        """Fetch AWS pricing data for common services."""
-        try:
-            # Example: In production, use boto3 AWS Pricing API
-            # For now, return realistic baseline data
-            services = {
-                "EC2 t3.medium": {"hourly": 0.0416, "monthly": 30},
-                "EC2 t3.large": {"hourly": 0.0832, "monthly": 60},
-                "RDS MySQL db.t3.small": {"hourly": 0.017, "monthly": 12},
-                "RDS PostgreSQL db.t3.small": {"hourly": 0.022, "monthly": 15},
-                "ElastiCache Redis cache.t3.micro": {"hourly": 0.017, "monthly": 12},
-                "S3 Standard (per GB)": {"monthly": 0.023},
-                "CloudFront (per GB)": {"monthly": 0.085},
-                "RDS Aurora (per vCPU-hour)": {"hourly": 0.12, "monthly": 87},
-                "ALB (per hour)": {"hourly": 0.0225, "monthly": 16},
-                "Route 53 (per hosted zone)": {"monthly": 0.50},
-            }
-            return {
-                "provider": "aws",
-                "currency": "USD",
-                "services": services,
-                "timestamp": datetime.utcnow().isoformat(),
-                "region": "us-east-1",
-            }
-        except Exception as e:
-            logger.error(f"Failed to fetch AWS pricing: {e}")
-            return {"provider": "aws", "error": str(e)}
-
-    @staticmethod
-    def fetch_gcp_pricing() -> dict:
-        """Fetch GCP pricing data for common services."""
-        try:
-            # Example: In production, use Google Cloud Pricing API
-            services = {
-                "Compute Engine e2-medium": {"hourly": 0.0335, "monthly": 24},
-                "Compute Engine e2-standard-2": {"hourly": 0.1003, "monthly": 72},
-                "Cloud SQL MySQL db-custom-2": {"hourly": 0.1111, "monthly": 80},
-                "Cloud SQL PostgreSQL db-custom-2": {"hourly": 0.1222, "monthly": 88},
-                "Memorystore Redis 2GB": {"hourly": 0.0876, "monthly": 63},
-                "Cloud Storage Standard (per GB)": {"monthly": 0.020},
-                "Cloud CDN (per GB)": {"monthly": 0.085},
-                "Cloud SQL HA (per hour)": {"hourly": 0.15, "monthly": 108},
-                "Cloud Load Balancing (per hour)": {"hourly": 0.025, "monthly": 18},
-                "Cloud DNS (per zone)": {"monthly": 0.20},
-            }
-            return {
-                "provider": "gcp",
-                "currency": "USD",
-                "services": services,
-                "timestamp": datetime.utcnow().isoformat(),
-                "region": "us-central1",
-            }
-        except Exception as e:
-            logger.error(f"Failed to fetch GCP pricing: {e}")
-            return {"provider": "gcp", "error": str(e)}
-
-    @staticmethod
-    def fetch_azure_pricing() -> dict:
-        """Fetch Azure pricing data for common services via Azure Retail Prices API."""
-        try:
-            url = "https://prices.azure.com/api/retail/prices"
-            services = {}
-
-            # Common Azure services to fetch
-            service_filters = [
-                "serviceName eq 'Virtual Machines'",
-                "serviceName eq 'SQL Database'",
-                "serviceName eq 'Cache for Redis'",
-                "serviceName eq 'Storage'",
-                "serviceName eq 'Azure App Service'",
-            ]
-
-            for service_filter in service_filters:
-                try:
-                    response = requests.get(
-                        f"{url}?$filter={service_filter}&$top=5",
-                        timeout=10
-                    )
-                    response.raise_for_status()
-                    data = response.json()
-
-                    for item in data.get("Items", [])[:3]:  # Get top 3 per service
-                        service_name = item.get("productName", item.get("serviceName", "Unknown"))
-                        if service_name not in services:
-                            services[service_name] = {
-                                "price_per_unit": float(item.get("retailPrice", 0)),
-                                "currency": item.get("currencyCode", "USD"),
-                                "unit": item.get("unitOfMeasure", "1 Hour"),
-                            }
-                except requests.RequestException as e:
-                    logger.warning(f"Failed to fetch {service_filter}: {e}")
-                    continue
-
-            return {
-                "provider": "azure",
-                "currency": "USD",
-                "services": services or {
-                    "Virtual Machine B2s": {"hourly": 0.052, "monthly": 37},
-                    "SQL Database S1": {"daily": 1.23, "monthly": 37},
-                    "Cache for Redis (Basic, 250MB)": {"hourly": 0.0149, "monthly": 10.7},
-                    "Storage Account (LRS)": {"per_gb": 0.0184},
-                    "App Service Plan (S1)": {"daily": 0.10, "monthly": 3},
-                },
-                "timestamp": datetime.utcnow().isoformat(),
-                "region": "East US",
-            }
-        except Exception as e:
-            logger.error(f"Failed to fetch Azure pricing: {e}")
-            return {"provider": "azure", "error": str(e)}
-
-
-class CloudArchitectureService:
-    """Provides architecture recommendations based on requirements."""
-
-    @staticmethod
-    def get_architecture_template(
-        provider: str,
-        scale: str = "medium",
-        workload_type: str = "web",
-    ) -> dict:
-        """
-        Get a recommended architecture template for the given provider.
-
-        Args:
-            provider: 'aws', 'gcp', or 'azure'
-            scale: 'small', 'medium', 'large'
-            workload_type: 'web', 'api', 'batch', 'ml', 'database'
-
-        Returns:
-            Architecture template with components and relationships
-        """
-        # Base templates for each provider
-        templates = {
-            "aws": {
-                "web": {
-                    "small": {
-                        "components": [
-                            {"name": "Route 53", "type": "dns"},
-                            {"name": "CloudFront", "type": "cdn"},
-                            {"name": "ALB", "type": "load_balancer"},
-                            {"name": "EC2 (t3.small)", "type": "compute", "count": 1},
-                            {"name": "RDS Aurora (db.t3.small)", "type": "database"},
-                            {"name": "S3", "type": "storage"},
-                        ],
-                        "estimated_monthly_cost": 150,
-                    },
-                    "medium": {
-                        "components": [
-                            {"name": "Route 53", "type": "dns"},
-                            {"name": "CloudFront", "type": "cdn"},
-                            {"name": "ALB", "type": "load_balancer"},
-                            {"name": "ECS Fargate", "type": "compute", "cpu": 1024, "memory": 2048},
-                            {"name": "RDS Aurora (db.t3.medium)", "type": "database", "multi_az": True},
-                            {"name": "ElastiCache Redis", "type": "cache"},
-                            {"name": "S3", "type": "storage"},
-                            {"name": "CloudWatch", "type": "monitoring"},
-                        ],
-                        "estimated_monthly_cost": 800,
-                    },
-                    "large": {
-                        "components": [
-                            {"name": "Route 53", "type": "dns"},
-                            {"name": "CloudFront", "type": "cdn"},
-                            {"name": "ALB (Multi-AZ)", "type": "load_balancer"},
-                            {"name": "ECS Fargate", "type": "compute", "cpu": 2048, "memory": 4096, "min": 3, "max": 20},
-                            {"name": "RDS Aurora (db.r6i.large)", "type": "database", "multi_az": True, "read_replicas": 2},
-                            {"name": "ElastiCache Redis (Cluster)", "type": "cache"},
-                            {"name": "S3", "type": "storage"},
-                            {"name": "CloudWatch + X-Ray", "type": "monitoring"},
-                            {"name": "Auto Scaling", "type": "orchestration"},
-                        ],
-                        "estimated_monthly_cost": 2200,
-                    },
-                }
-            },
-            "gcp": {
-                "web": {
-                    "small": {
-                        "components": [
-                            {"name": "Cloud DNS", "type": "dns"},
-                            {"name": "Cloud CDN", "type": "cdn"},
-                            {"name": "Cloud Load Balancer", "type": "load_balancer"},
-                            {"name": "Compute Engine (e2-medium)", "type": "compute", "count": 1},
-                            {"name": "Cloud SQL (MySQL, db-custom-1)", "type": "database"},
-                            {"name": "Cloud Storage", "type": "storage"},
-                        ],
-                        "estimated_monthly_cost": 120,
-                    },
-                    "medium": {
-                        "components": [
-                            {"name": "Cloud DNS", "type": "dns"},
-                            {"name": "Cloud CDN", "type": "cdn"},
-                            {"name": "Cloud Load Balancer", "type": "load_balancer"},
-                            {"name": "Cloud Run", "type": "compute", "cpu": 2, "memory": "2Gi", "concurrency": 100},
-                            {"name": "Cloud SQL (MySQL, db-custom-2)", "type": "database", "high_availability": True},
-                            {"name": "Memorystore Redis", "type": "cache"},
-                            {"name": "Cloud Storage", "type": "storage"},
-                            {"name": "Cloud Monitoring", "type": "monitoring"},
-                        ],
-                        "estimated_monthly_cost": 650,
-                    },
-                    "large": {
-                        "components": [
-                            {"name": "Cloud DNS", "type": "dns"},
-                            {"name": "Cloud CDN", "type": "cdn"},
-                            {"name": "Cloud Load Balancer (Multi-region)", "type": "load_balancer"},
-                            {"name": "Cloud Run", "type": "compute", "cpu": 4, "memory": "4Gi", "min_instances": 3, "max_instances": 50},
-                            {"name": "Cloud SQL (MySQL, db-custom-4)", "type": "database", "multi_region": True},
-                            {"name": "Memorystore Redis (Cluster)", "type": "cache"},
-                            {"name": "Cloud Storage + Archive", "type": "storage"},
-                            {"name": "Cloud Monitoring + Logging", "type": "monitoring"},
-                            {"name": "Cloud Armor", "type": "security"},
-                        ],
-                        "estimated_monthly_cost": 1800,
-                    },
-                }
-            },
-            "azure": {
-                "web": {
-                    "small": {
-                        "components": [
-                            {"name": "Azure Front Door", "type": "cdn"},
-                            {"name": "App Service (B1)", "type": "compute"},
-                            {"name": "Azure SQL (S1)", "type": "database"},
-                            {"name": "Azure Storage (LRS)", "type": "storage"},
-                        ],
-                        "estimated_monthly_cost": 100,
-                    },
-                    "medium": {
-                        "components": [
-                            {"name": "Azure Front Door Standard", "type": "cdn"},
-                            {"name": "App Service Plan (S2)", "type": "compute", "instances": 2},
-                            {"name": "Azure SQL (S3)", "type": "database", "backup": "geo-redundant"},
-                            {"name": "Azure Cache for Redis (C1)", "type": "cache"},
-                            {"name": "Azure Storage (GRS)", "type": "storage"},
-                            {"name": "Application Insights", "type": "monitoring"},
-                        ],
-                        "estimated_monthly_cost": 700,
-                    },
-                    "large": {
-                        "components": [
-                            {"name": "Azure Front Door Premium", "type": "cdn"},
-                            {"name": "App Service Plan (P2V2)", "type": "compute", "instances": 3},
-                            {"name": "Azure SQL (P6)", "type": "database", "multi_region": True},
-                            {"name": "Azure Cache for Redis (P1)", "type": "cache"},
-                            {"name": "Azure Storage (RA-GRS)", "type": "storage"},
-                            {"name": "Application Insights + Log Analytics", "type": "monitoring"},
-                            {"name": "Azure DevOps", "type": "orchestration"},
-                            {"name": "Azure Security Center", "type": "security"},
-                        ],
-                        "estimated_monthly_cost": 2100,
-                    },
-                }
-            }
-        }
-
-        # Return the architecture template
-        provider_templates = templates.get(provider, {})
-        workload_templates = provider_templates.get(workload_type, provider_templates.get("web", {}))
-        template = workload_templates.get(scale, workload_templates.get("medium", {}))
-
-        return {
-            "provider": provider,
-            "workload_type": workload_type,
-            "scale": scale,
-            "components": template.get("components", []),
-            "estimated_monthly_cost": template.get("estimated_monthly_cost", 0),
-            "description": f"{scale.title()} {workload_type} workload on {provider.upper()}",
-        }
+    estimate_infrastructure_costs = staticmethod(estimate_infrastructure_costs)

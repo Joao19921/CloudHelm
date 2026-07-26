@@ -1,6 +1,7 @@
 from typing import Any
 
 from app.services.llm_service import LLMService
+from app.services.pricing_service import build_pricing_request_from_text, estimate_infrastructure_costs
 from app.services.terraform_service import build_terraform_modules
 
 
@@ -39,9 +40,9 @@ def _build_architecture(raw_input: str, provider: str, ai: dict[str, Any]) -> di
         },
         {
             "name": "Cost Module",
-            "role": "Produces preliminary monthly comparison across cloud providers.",
-            "calls": "Pricing assumptions table",
-            "returns": "cost ranges and recommendation",
+            "role": "Calculates monthly estimates from the synchronized official cloud pricing catalog.",
+            "calls": "AWS Pricing, Azure Retail, GCP Billing, OCI Price List normalized catalog",
+            "returns": "componentized cost ranges and provider recommendation",
         },
         {
             "name": "Terraform Generator",
@@ -67,23 +68,6 @@ def _build_architecture(raw_input: str, provider: str, ai: dict[str, Any]) -> di
     }
 
 
-def _build_costs() -> dict[str, Any]:
-    return {
-        "currency": "USD",
-        "monthly_estimate": {
-            "aws": {"min": 25, "max": 70},
-            "gcp": {"min": 20, "max": 60},
-            "azure": {"min": 25, "max": 75},
-            "local_first": {"min": 0, "max": 10},
-        },
-        "notes": [
-            "Baseline for low traffic and 15 users, with scale-ready architecture.",
-            "Includes lightweight compute, managed DB or equivalent, and observability baseline.",
-            "Final values depend on region, usage profile, and retention policies.",
-        ],
-    }
-
-
 def _monthly_cost_midpoint(cost_range: dict[str, float]) -> float:
     return float(cost_range["min"] + cost_range["max"]) / 2.0
 
@@ -101,7 +85,7 @@ def _build_provider_ranking(
 ) -> dict[str, Any]:
     summary_map = _summary_index(catalog_summary)
     estimates = costs["monthly_estimate"]
-    base_providers = ["aws", "gcp", "azure"]
+    base_providers = [provider for provider in ("aws", "gcp", "azure", "oci") if provider in estimates]
 
     mids = {provider: _monthly_cost_midpoint(estimates[provider]) for provider in base_providers}
     max_mid = max(mids.values())
@@ -111,14 +95,15 @@ def _build_provider_ranking(
     ranked = []
     for provider in base_providers:
         cost_efficiency = 1 - ((mids[provider] - min_mid) / spread)
-        sla_score = 0.92 if provider in {"aws", "gcp"} else 0.9
+        sla_score = 0.92 if provider in {"aws", "gcp"} else 0.9 if provider == "azure" else 0.88
         catalog_signal = 0.5
         if provider in summary_map:
             total_items = summary_map[provider].get("total", 0) or 0
             catalog_signal = min(1.0, total_items / 25)
 
+        fallback_penalty = 0.08 if costs.get("providers", {}).get(provider, {}).get("used_fallback") else 0.0
         preference_bonus = 0.12 if preferred_provider and provider == preferred_provider else 0.0
-        score = (cost_efficiency * 0.45) + (sla_score * 0.35) + (catalog_signal * 0.2) + preference_bonus
+        score = (cost_efficiency * 0.45) + (sla_score * 0.35) + (catalog_signal * 0.2) + preference_bonus - fallback_penalty
 
         ranked.append(
             {
@@ -135,7 +120,7 @@ def _build_provider_ranking(
     ranked.sort(key=lambda row: row["score"], reverse=True)
     return {
         "recommended_provider": ranked[0]["provider"],
-        "method": "weighted(cost=45%, sla=35%, market-signal=20%, preference-bonus=12%)",
+        "method": "weighted(cost=45%, sla=35%, catalog-signal=20%, preference-bonus=12%, fallback-penalty=8%)",
         "items": ranked,
     }
 
@@ -144,18 +129,22 @@ def orchestrate_demand(
     raw_input: str,
     provider: str,
     catalog_summary: list[dict[str, Any]] | None = None,
+    catalog_items: list[Any] | None = None,
     llm_provider: str = "none",
     llm_api_key: str | None = None,
     llm_model: str | None = None,
 ) -> dict[str, Any]:
-    costs = _build_costs()
-    preferred_provider = provider if provider in {"aws", "gcp", "azure"} else None
+    pricing_request = build_pricing_request_from_text(raw_input)
+    costs = estimate_infrastructure_costs(catalog_items=catalog_items, request=pricing_request)
+    preferred_provider = provider if provider in {"aws", "gcp", "azure", "oci"} else None
     ranking = _build_provider_ranking(
         costs=costs,
         preferred_provider=preferred_provider,
         catalog_summary=catalog_summary,
     )
     selected_provider = provider if provider in {"aws", "gcp", "azure"} else ranking["recommended_provider"]
+    if selected_provider == "oci":
+        selected_provider = ranking["items"][1]["provider"] if len(ranking["items"]) > 1 else "aws"
 
     llm_result = LLMService.generate_brief(
         raw_input=raw_input,

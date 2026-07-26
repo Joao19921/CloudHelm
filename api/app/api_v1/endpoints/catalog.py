@@ -8,7 +8,7 @@ from app.repositories.catalog_repository import list_catalog_items, providers_su
 from app.schemas.catalog import CatalogItemResponse, CatalogSyncRequest, CatalogSyncResponse
 from app.services.cloud_catalog_service import CloudMasterEngine
 
-router = APIRouter(prefix="/api/catalog", tags=["catalog"])
+router = APIRouter(prefix="/catalog", tags=["catalog"])
 
 
 @router.post("/sync", response_model=CatalogSyncResponse)
@@ -18,9 +18,9 @@ def sync_catalog(
     _current_user: User = Depends(get_current_user),
 ):
     providers = [provider.lower() for provider in payload.providers]
-    providers = [provider for provider in providers if provider in {"aws", "gcp", "azure"}]
+    providers = [provider for provider in providers if provider in {"aws", "gcp", "azure", "oci"}]
     if not providers:
-        providers = ["aws", "gcp", "azure"]
+        providers = ["aws", "gcp", "azure", "oci"]
 
     engine = CloudMasterEngine()
     synced, exported_file = engine.sync_database(

@@ -4,11 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CloudHelm</title>
-    <script>
-      window.CLOUDHELM_CONFIG = {
-        API_BASE_URL: "https://cloudhelm-platform.onrender.com"
-      };
-    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -168,9 +163,9 @@
                   class="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 outline-none focus:border-cyan-300/60"
                 ></textarea>
               </div>
-              
+
               <div>
-                <label class="text-xs font-semibold text-slate-300">📊 Anexar Arquivo (opcional)</label>
+                <label class="text-xs font-semibold text-slate-300">Anexar Arquivo (opcional)</label>
                 <p class="mt-1 text-xs text-slate-400">PDF com especificacoes, requisitos, ou diagrama atual</p>
                 <input
                   id="demand-file"
@@ -181,7 +176,7 @@
               </div>
 
               <div>
-                <label class="text-xs font-semibold text-slate-300">🎙️ Transcrever Audio (opcional)</label>
+                <label class="text-xs font-semibold text-slate-300">Transcrever Audio (opcional)</label>
                 <p class="mt-1 text-xs text-slate-400">Se anexou um audio, pode transcrever automaticamente para complementar a analise</p>
                 <button
                   id="transcribe-btn"
@@ -256,6 +251,7 @@
                 <option value="aws">AWS</option>
                 <option value="gcp">GCP</option>
                 <option value="azure">Azure</option>
+                <option value="oci">OCI</option>
               </select>
               <input
                 id="catalog-search"

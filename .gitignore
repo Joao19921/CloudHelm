@@ -4,3 +4,8 @@ node_modules/
 antigravity-doc
 # tests
 others
+
+api/.env
+api/.env.*
+!api/.env.example
+frontend/config.local.js

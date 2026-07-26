@@ -7,7 +7,7 @@ from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.repositories.app_settings_repository import get_llm_runtime_config
-from app.repositories.catalog_repository import providers_summary
+from app.repositories.catalog_repository import list_catalog_items, providers_summary
 from app.repositories.demand_repository import (
     create_demand,
     get_demand_by_id,
@@ -25,7 +25,7 @@ from app.services.orchestration_service import orchestrate_demand
 from app.services.terraform_service import build_terraform_modules
 from app.services.transcription_service import TranscriptionService
 
-router = APIRouter(prefix="/api", tags=["demands"])
+router = APIRouter(tags=["demands"])
 
 
 @router.get("/providers")
@@ -114,6 +114,7 @@ def orchestrate_demand_api(
         raw_input=demand.raw_input,
         provider=payload.provider,
         catalog_summary=providers_summary(db),
+        catalog_items=list_catalog_items(db=db, provider="all", search="", limit=500),
         llm_provider=llm_provider,
         llm_api_key=llm_api_key,
         llm_model=llm_config.get("model") or None,

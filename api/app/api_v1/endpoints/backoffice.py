@@ -14,7 +14,7 @@ from app.schemas.backoffice import BackofficeUserItem, LLMConfigPayload, LLMConf
 from app.services.audit_service import AuditService
 from app.services.email_service import get_email_service
 
-router = APIRouter(prefix="/api/backoffice", tags=["backoffice"])
+router = APIRouter(prefix="/backoffice", tags=["backoffice"])
 
 
 def _mask_secret(secret: str) -> str:
