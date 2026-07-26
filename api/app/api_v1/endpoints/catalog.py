@@ -8,7 +8,7 @@ from app.repositories.catalog_repository import list_catalog_items, providers_su
 from app.schemas.catalog import CatalogItemResponse, CatalogSyncRequest, CatalogSyncResponse
 from app.services.cloud_catalog_service import CloudMasterEngine
 
-router = APIRouter(prefix="/api/catalog", tags=["catalog"])
+router = APIRouter(prefix="/catalog", tags=["catalog"])
 
 
 @router.post("/sync", response_model=CatalogSyncResponse)
