@@ -6,6 +6,7 @@ def build_terraform_modules(provider: str) -> dict[str, Any]:
         "aws": 'provider "aws" {\n  region = var.region\n}\n',
         "gcp": 'provider "google" {\n  project = var.project_id\n  region  = var.region\n}\n',
         "azure": 'provider "azurerm" {\n  features {}\n}\n',
+        "oci": 'provider "oci" {\n  region = var.region\n}\n',
     }[provider]
 
     modules = {
