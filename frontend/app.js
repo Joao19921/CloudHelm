@@ -52,6 +52,7 @@ function loadTokenFromUrlOrStorage() {
   const url = new URL(window.location.href);
   const token = url.searchParams.get("token");
   const pending = url.searchParams.get("pending");
+  const authError = url.searchParams.get("auth_error");
 
   if (token) {
     saveToken(token);
@@ -64,6 +65,12 @@ function loadTokenFromUrlOrStorage() {
   if (pending) {
     setStatus("Acesso pendente. Aguarde aprovacao do administrador CloudHelm.", true);
     url.searchParams.delete("pending");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  if (authError) {
+    setStatus(`Falha no login GitHub: ${authError}`, true);
+    url.searchParams.delete("auth_error");
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
   }
 }
@@ -113,18 +120,38 @@ function renderArchitecture(analysis) {
 }
 
 function renderCosts(analysis) {
-  const rows = analysis.costs.monthly_estimate;
+  const rows = analysis.costs.monthly_estimate || {};
+  const details = analysis.costs.providers || {};
   const selected = analysis.provider;
   costsEl.innerHTML = `
     <div class="rounded-xl border border-white/10 bg-slate-950/50 p-3">
       <p class="mb-2 text-sm font-semibold">Comparativo mensal (USD)</p>
-      ${Object.entries(rows)
-        .map(([provider, values]) => {
-          const isSelected = provider === selected;
-          const cls = isSelected ? "text-brand-200 font-semibold" : "text-slate-300";
-          return `<p class="text-xs ${cls}">${provider.toUpperCase()}: ${values.min} - ${values.max}</p>`;
-        })
-        .join("")}
+      <div class="space-y-3">
+        ${Object.entries(rows)
+          .map(([provider, values]) => {
+            const providerDetails = details[provider] || {};
+            const isSelected = provider === selected;
+            const cls = isSelected ? "text-brand-200 font-semibold" : "text-slate-300";
+            const total = Number(values.total ?? ((Number(values.min) + Number(values.max)) / 2));
+            const components = (providerDetails.components || []).slice(0, 4);
+            const fallback = providerDetails.used_fallback ? "com fallback" : "catalogo oficial";
+            return `
+              <div class="rounded-lg border border-white/10 bg-slate-950/40 p-2">
+                <p class="text-xs ${cls}">${provider.toUpperCase()}: USD ${total.toFixed(2)} <span class="text-slate-400">(${Number(values.min).toFixed(2)} - ${Number(values.max).toFixed(2)})</span></p>
+                <p class="mt-1 text-[11px] text-slate-400">Fonte: ${(providerDetails.sources || [fallback]).join(", ")} - ${fallback}</p>
+                <div class="mt-2 space-y-1">
+                  ${components
+                    .map(
+                      (component) =>
+                        `<p class="text-[11px] text-slate-300">${component.component}: USD ${Number(component.monthly_cost).toFixed(2)} <span class="text-slate-500">${component.display_name}</span></p>`
+                    )
+                    .join("")}
+                </div>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
     </div>
   `;
 }
@@ -250,7 +277,7 @@ async function syncCatalog() {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({
-      providers: ["aws", "gcp", "azure"],
+      providers: ["aws", "gcp", "azure", "oci"],
       limit_per_provider: 25,
     }),
   });
@@ -297,14 +324,12 @@ async function orchestrate() {
   const provider = $("provider").value;
   const fileInput = $("demand-file");
 
-  // Handle file upload if provided
   if (fileInput.files.length > 0) {
     setStatus("Processando arquivo e transcrevendo audio se necessario...");
     const file = fileInput.files[0];
     const isAudio = file.type.startsWith("audio/") || file.type === "video/mp4";
-    
+
     if (isAudio) {
-      // Transcribe audio
       const form = new FormData();
       form.append("audio", file);
       const transcribeRes = await fetch(apiUrl("/api/demands/transcribe"), {
@@ -316,7 +341,6 @@ async function orchestrate() {
         console.warn("Falha na transcricao. Continuando com texto fornecido.");
       } else {
         const transcriptData = await transcribeRes.json();
-        // Append transcribed text to existing input
         if (rawInput) {
           rawInput += "\n\n[Transcricao do audio]\n" + transcriptData.transcript;
         } else {
@@ -327,7 +351,6 @@ async function orchestrate() {
     }
   }
 
-  // Validate that we have at least a title and some input
   if (!title || rawInput.length < 10) {
     setStatus("Informe titulo e uma descricao valida da demanda (minimo 10 caracteres).", true);
     return;
