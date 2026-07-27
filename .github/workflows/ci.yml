@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP_NAME: CloudHelm
+      SECRET_KEY: ci-secret-key
+      ACCESS_TOKEN_EXPIRE_MINUTES: "120"
+      DATABASE_URL: sqlite:///./cloudhelm_ci.db
+      FRONTEND_PUBLIC_URL: http://localhost:8000
+      CORS_ORIGINS: http://localhost:8000
+      GITHUB_REDIRECT_URI: http://localhost:8000/api/auth/github/callback
+      GITHUB_ADMIN_LOGINS: ci-admin
+      GITHUB_CLIENT_ID: ci-client-id
+      GITHUB_CLIENT_SECRET: ci-client-secret
+      OPENAI_CHAT_MODEL: gpt-4o-mini
+      GEMINI_MODEL: gemini-1.5-flash
+      TRANSCRIBE_MODEL: whisper-1
+      GCP_BILLING_API_KEY: ""
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pytest httpx
+
+      - name: Compile application modules
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import py_compile
+
+          paths = [Path('app/main.py'), Path('app/api_v1/router.py')]
+          for pattern in ('app/api_v1/endpoints/*.py', 'app/services/*.py', 'app/schemas/*.py'):
+              paths.extend(Path().glob(pattern))
+          for path in paths:
+              py_compile.compile(str(path), doraise=True)
+          PY
+
+      - name: Run tests
+        run: pytest -q
+
+  frontend:
+    name: Frontend syntax checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check frontend/config.js
+          node --check frontend/app.js
+          node --check frontend/backoffice.js
