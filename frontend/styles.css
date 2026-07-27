@@ -1,0 +1,236 @@
+:root {
+  color-scheme: dark;
+  --shell-max: 1280px;
+  --shell-pad: clamp(1rem, 2vw, 2rem);
+}
+
+html {
+  scroll-behavior: smooth;
+  text-size-adjust: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+a,
+select,
+input,
+textarea,
+summary {
+  touch-action: manipulation;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+body > header > div,
+body > main {
+  width: min(calc(100vw - (var(--shell-pad) * 2)), var(--shell-max));
+  max-width: var(--shell-max) !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+section,
+main,
+#workspace,
+#catalog-grid {
+  min-width: 0;
+}
+
+.grid > *,
+#catalog-grid > * {
+  min-width: 0;
+}
+
+textarea,
+input,
+select {
+  max-width: 100%;
+}
+
+pre {
+  max-width: 100%;
+  contain: content;
+}
+
+#architecture,
+#costs,
+#terraform-modules,
+#ranking,
+#ai-brief,
+#catalog-grid {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 480px;
+}
+
+#catalog-grid img {
+  aspect-ratio: 1 / 1;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --shell-pad: 1rem;
+  }
+
+  body > header > div {
+    align-items: flex-start !important;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding-top: 0.875rem !important;
+    padding-bottom: 0.875rem !important;
+  }
+
+  body > header > div > div:first-child {
+    min-width: 0;
+  }
+
+  body > header img {
+    height: 2.25rem !important;
+  }
+
+  body > header h1 {
+    max-width: 14rem;
+    font-size: 0.875rem !important;
+    line-height: 1.15rem !important;
+  }
+
+  body > header > div > div:last-child {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  #auth-state {
+    max-width: 12rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body > main {
+    padding-bottom: 4rem !important;
+    padding-top: 1.25rem !important;
+  }
+
+  main > section:first-child h2 {
+    font-size: clamp(2rem, 11vw, 3rem) !important;
+    line-height: 0.98 !important;
+  }
+
+  main > section:first-child p {
+    font-size: 1rem !important;
+  }
+
+  #workspace {
+    margin-top: 2.5rem !important;
+  }
+
+  #workspace > section {
+    gap: 1rem !important;
+  }
+
+  #workspace > div,
+  #workspace > section > div,
+  #workspace > section:last-child {
+    border-radius: 1rem !important;
+    padding: 1rem !important;
+  }
+
+  textarea {
+    min-height: 11rem;
+  }
+
+  input[type="file"] {
+    font-size: 0.8125rem;
+  }
+
+  #orchestrate-btn,
+  #login-github-btn,
+  #transcribe-btn,
+  #catalog-sync-btn {
+    min-height: 3rem;
+  }
+}
+
+@media (min-width: 1536px) {
+  :root {
+    --shell-max: 1560px;
+  }
+
+  #catalog-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 2560px) {
+  :root {
+    --shell-max: 2200px;
+    --shell-pad: 3rem;
+  }
+
+  #workspace > section:first-of-type {
+    grid-template-columns: minmax(0, 2fr) minmax(360px, 0.8fr) !important;
+  }
+
+  #workspace > section:nth-of-type(2) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  }
+
+  #catalog-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 3840px) {
+  :root {
+    --shell-max: 3000px;
+    --shell-pad: 4rem;
+  }
+
+  body > main {
+    padding-top: 4rem !important;
+  }
+
+  main > section:first-child h2 {
+    font-size: clamp(4rem, 3.4vw, 7rem) !important;
+    max-width: 16ch;
+  }
+
+  #workspace > section {
+    gap: 2rem !important;
+  }
+
+  #catalog-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 7000px) {
+  :root {
+    --shell-max: 4200px;
+    --shell-pad: 6rem;
+  }
+
+  #catalog-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
