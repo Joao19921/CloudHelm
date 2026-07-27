@@ -32,6 +32,7 @@ CloudHelm e uma plataforma web para planejar infraestrutura cloud, comparar cust
 - `docs/SYSTEM_FLOW.md`: fluxo funcional ponta a ponta.
 - `docs/DEPLOYMENT_FREE.md`: deploy gratuito com GitHub Pages, Render e Supabase.
 - `docs/TESTING.md`: orientacoes de teste.
+- `docs/FRONTEND_PERFORMANCE.md`: responsividade e performance do frontend.
 
 ## Execucao local do backend
 
