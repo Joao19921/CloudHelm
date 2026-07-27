@@ -21,7 +21,7 @@ class DemandResponse(BaseModel):
 
 
 class OrchestrateRequest(BaseModel):
-    provider: str = Field(pattern="^(aws|gcp|azure|auto)$")
+    provider: str = Field(pattern="^(aws|gcp|azure|oci|auto)$")
 
 
 class DemandAnalysisResponse(BaseModel):
