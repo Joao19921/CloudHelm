@@ -30,7 +30,7 @@ Todas as rotas de negocio usam prefixo global `/api`, exceto UI server-side e he
 | GET | `/api/terraform/{provider}` | Nao | Retorna template Terraform do provedor. |
 | POST | `/api/demands` | JWT | Cria demanda de infraestrutura. |
 | GET | `/api/demands` | JWT | Lista demandas do usuario. |
-| POST | `/api/demands/{demand_id}/orchestrate` | JWT | Gera analise, ranking, custos e sugestao Terraform. |
+| POST | `/api/demands/{demand_id}/orchestrate` | JWT | Gera analise, ranking, custos e sugestao Terraform; usa fallback deterministico se a IA externa estiver indisponivel. |
 | POST | `/api/demands/transcribe` | JWT | Transcreve audio quando OpenAI estiver configurada. |
 
 ## Catalogo cloud
