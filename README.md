@@ -51,3 +51,7 @@ No Windows PowerShell, ative a venv com `.venv\\Scripts\\Activate.ps1`.
 - `api/.env` nunca deve ser commitado.
 - Bancos locais (`*.db`, `*.sqlite`) nao devem entrar no Git.
 - Exportacoes geradas pelo catalogo (`api/dist_cloud_data/`) sao artefatos runtime.
+
+## CI/CD
+
+- GitHub Actions valida backend e frontend em `main`; detalhes em `docs/CI_CD.md`.
