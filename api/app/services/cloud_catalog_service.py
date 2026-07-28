@@ -345,62 +345,75 @@ class CloudMasterEngine:
         ]
 
     def fetch_oci_data(self, limit: int = 20) -> list[dict]:
+        seeded = [
+            ("OCI Compute", "Compute VM.Standard", 0.0255, "OCPU Hour", "sa-saopaulo-1"),
+            ("OCI Container Instances", "Container Instances", 0.0400, "OCPU Hour", "sa-saopaulo-1"),
+            ("OCI Kubernetes Engine", "OKE Cluster Control Plane", 0.1000, "Cluster Hour", "sa-saopaulo-1"),
+            ("OCI Functions", "Functions Requests", 0.2000, "1M requests", "sa-saopaulo-1"),
+            ("OCI Autonomous Database", "Autonomous Database", 0.1613, "OCPU Hour", "sa-saopaulo-1"),
+            ("OCI MySQL HeatWave", "MySQL HeatWave", 0.0800, "OCPU Hour", "sa-saopaulo-1"),
+            ("OCI NoSQL Database", "NoSQL Capacity", 0.0680, "1M read units", "sa-saopaulo-1"),
+            ("OCI Object Storage", "Object Storage Standard", 0.0255, "GB Month", "sa-saopaulo-1"),
+            ("OCI Block Volume", "Block Volume Balanced", 0.0425, "GB Month", "sa-saopaulo-1"),
+            ("OCI File Storage", "File Storage", 0.3000, "GB Month", "sa-saopaulo-1"),
+            ("OCI Load Balancer", "Flexible Load Balancer", 0.0100, "Hour", "sa-saopaulo-1"),
+            ("OCI FastConnect", "FastConnect Port", 0.0200, "Hour", "sa-saopaulo-1"),
+            ("OCI VPN", "Site-to-Site VPN", 0.0500, "Hour", "sa-saopaulo-1"),
+            ("OCI CDN", "Content Delivery Network", 0.0085, "GB", "global"),
+            ("OCI Logging", "Logging Ingestion", 0.0500, "GB", "sa-saopaulo-1"),
+            ("OCI Monitoring", "Monitoring Metrics", 0.0100, "1M metrics", "sa-saopaulo-1"),
+            ("OCI Vault", "Vault Key Management", 0.1000, "Key Month", "sa-saopaulo-1"),
+            ("OCI WAF", "Web Application Firewall", 5.0000, "Policy Month", "global"),
+            ("OCI Streaming", "Streaming Messages", 0.0200, "GB", "sa-saopaulo-1"),
+            ("OCI API Gateway", "API Gateway Requests", 3.5000, "1M requests", "sa-saopaulo-1"),
+        ]
         url = "https://apexapps.oracle.com/pls/apex/cetools/api/v1/products/"
         try:
             resp = requests.get(url, timeout=20)
-            if resp.status_code != 200:
-                return []
-
-            raw_items = resp.json().get("items", [])
+            raw_items = resp.json().get("items", []) if resp.status_code == 200 else []
             items = []
             for item in raw_items:
                 localizations = item.get("currencyCodeLocalizations", [])
-
-                usd_localization = None
-                for loc in localizations:
-                    if loc.get("currencyCode") == "USD":
-                        usd_localization = loc
-                        break
-
-                if not usd_localization:
-                    continue
-
-                prices = usd_localization.get("prices", [])
-                if not prices:
-                    continue
-
-                price_val = None
-                for price in prices:
-                    if price.get("model") == "PAY_AS_YOU_GO":
-                        price_val = price.get("value")
-                        break
-
+                usd_localization = next((loc for loc in localizations if loc.get("currencyCode") == "USD"), None)
+                prices = usd_localization.get("prices", []) if usd_localization else []
+                price_val = next((price.get("value") for price in prices if price.get("model") == "PAY_AS_YOU_GO"), None)
                 if price_val is None:
                     continue
-
                 service = item.get("serviceCategory", "General")
-                display_name = item.get("displayName", "OCI Product")
-                metric = item.get("metricName", "Unit")
-
                 items.append(
                     {
                         "provider": "oci",
                         "service": service,
-                        "display_name": display_name,
+                        "display_name": item.get("displayName", "OCI Product"),
                         "region": "global",
                         "price": float(price_val),
                         "currency": "USD",
-                        "unit": metric,
+                        "unit": item.get("metricName", "Unit"),
                         "icon": self.get_smart_icon(service, "oci"),
                         "source": "oci-retail-api",
                     }
                 )
                 if len(items) >= limit:
                     break
-            return items
-        except Exception:
-            return []
+            if items:
+                return items
+        except (requests.RequestException, ValueError, TypeError):
+            pass
 
+        return [
+            {
+                "provider": "oci",
+                "service": service,
+                "display_name": name,
+                "region": region,
+                "price": float(price),
+                "currency": "USD",
+                "unit": unit,
+                "icon": self.get_smart_icon(service, "oci"),
+                "source": "seeded-baseline",
+            }
+            for service, name, price, unit, region in seeded[:limit]
+        ]
     def collect(self, providers: list[str], limit_per_provider: int) -> dict[str, list[dict]]:
         self.download_all_icons()
         data: dict[str, list[dict]] = {}
