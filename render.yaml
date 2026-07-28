@@ -21,7 +21,7 @@ services:
       - key: FRONTEND_PUBLIC_URL
         sync: false
       - key: CORS_ORIGINS
-        sync: false
+        value: https://joao19921.github.io
       - key: OPENAI_CHAT_MODEL
         value: gpt-4o-mini
       - key: GEMINI_MODEL

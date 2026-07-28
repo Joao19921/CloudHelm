@@ -115,7 +115,10 @@ def get_demand_analysis_api(
     demand = get_demand_by_id(db, demand_id=demand_id, owner_id=current_user.id)
     if not demand:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Base arquitetural não encontrada.")
-    ApplicationLogService.record(db, event_name="base_opened", event_category="interaction", demand_id=demand.id, user_id=current_user.id, route="GET /api/demands/{demand_id}/analysis", metadata={"has_analysis": bool(demand.analysis_json or demand.architecture_json)}, ip_address=request.client.host if request.client else None, user_agent=request.headers.get("user-agent"))
+    try:
+        ApplicationLogService.record(db, event_name="base_opened", event_category="interaction", demand_id=demand.id, user_id=current_user.id, route="GET /api/demands/{demand_id}/analysis", metadata={"has_analysis": bool(demand.analysis_json or demand.architecture_json)}, ip_address=request.client.host if request.client else None, user_agent=request.headers.get("user-agent"))
+    except Exception:
+        pass
     if demand.analysis_json:
         payload = json.loads(demand.analysis_json)
     elif demand.architecture_json:
@@ -129,7 +132,13 @@ def get_demand_analysis_api(
         }
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Esta base ainda não possui uma análise para abrir.")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="A análise salva está em formato inválido.")
     payload.pop("demand_id", None)
+    payload.setdefault("provider", demand.provider_selected or "aws")
+    for key in ("architecture", "costs", "terraform", "ranking", "ai"):
+        if not isinstance(payload.get(key), dict):
+            payload[key] = {}
     return DemandAnalysisResponse(demand_id=demand.id, **payload)
 
 

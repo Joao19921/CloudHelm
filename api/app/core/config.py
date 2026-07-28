@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     github_redirect_uri: str
     github_admin_logins: str = ""
     frontend_public_url: str = "http://localhost:8000"
-    cors_origins: str = "http://localhost:8000"
+    cors_origins: str = "http://localhost:8000,https://joao19921.github.io"
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         items = [item.strip() for item in self.cors_origins.split(",") if item.strip()]
+        for required_origin in ("https://joao19921.github.io",):
+            if required_origin not in items:
+                items.append(required_origin)
         return items or ["http://localhost:8000"]
 
 
