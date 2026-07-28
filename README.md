@@ -1,4 +1,4 @@
-# CloudHelm
+﻿# CloudHelm
 
 CloudHelm e uma plataforma web para planejar infraestrutura cloud, comparar custos entre provedores e gerar uma base inicial de arquitetura/Terraform a partir de demandas do usuario.
 
@@ -31,7 +31,7 @@ CloudHelm e uma plataforma web para planejar infraestrutura cloud, comparar cust
 - `docs/API_ROUTES.md`: rotas publicas e protegidas da API.
 - `docs/SYSTEM_FLOW.md`: fluxo funcional ponta a ponta.
 - `docs/DEPLOYMENT_FREE.md`: deploy gratuito com GitHub Pages, Render e Supabase.
-- `docs/TESTING.md`: orientacoes de teste.
+
 
 ## Execucao local do backend
 
@@ -51,3 +51,5 @@ No Windows PowerShell, ative a venv com `.venv\\Scripts\\Activate.ps1`.
 - `api/.env` nunca deve ser commitado.
 - Bancos locais (`*.db`, `*.sqlite`) nao devem entrar no Git.
 - Exportacoes geradas pelo catalogo (`api/dist_cloud_data/`) sao artefatos runtime.
+
+

@@ -1,4 +1,4 @@
-# Rotas da API
+﻿# Rotas da API
 
 Base URL de producao: `https://cloudhelm-platform.onrender.com`
 
@@ -32,7 +32,7 @@ Todas as rotas de negocio usam prefixo global `/api`, exceto UI server-side e he
 | POST | `/api/demands` | JWT | Cria demanda de infraestrutura. |
 | GET | `/api/demands` | JWT | Lista demandas do usuario. |
 | POST | `/api/demands/{demand_id}/orchestrate` | JWT | Gera analise, ranking, custos e sugestao Terraform. |
-| POST | `/api/demands/transcribe` | JWT | Transcreve audio quando OpenAI estiver configurada. |
+
 
 ## Catalogo cloud
 
@@ -83,3 +83,4 @@ Payload principal de `/api/pricing/estimate`:
 - Nao criar endpoints com prefixo `/api` dentro dos arquivos de endpoint; o prefixo ja vem de `app.include_router(api_router, prefix="/api")`.
 - Rotas protegidas devem usar dependencias de autenticacao em `api/app/core/deps.py`.
 - Novas rotas devem ser registradas em `api/app/api_v1/router.py`.
+

@@ -1,4 +1,4 @@
-services:
+﻿services:
   - type: web
     name: cloudhelm-platform
     runtime: docker
@@ -26,8 +26,6 @@ services:
         value: gpt-4o-mini
       - key: GEMINI_MODEL
         value: gemini-1.5-flash
-      - key: TRANSCRIBE_MODEL
-        value: whisper-1
       - key: GITHUB_CLIENT_ID
         sync: false
       - key: GITHUB_CLIENT_SECRET
@@ -38,3 +36,6 @@ services:
         sync: false
       - key: GCP_BILLING_API_KEY
         sync: false
+
+
+

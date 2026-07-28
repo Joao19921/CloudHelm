@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
@@ -141,7 +141,7 @@ $ terraform generate --modular</pre>
           <article class="group rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-cyan-300/60 hover:shadow-glow">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Da reuniao para a nuvem</p>
             <h4 class="mt-2 text-xl font-bold">Da Reuniao para a Nuvem</h4>
-            <p class="mt-3 text-sm leading-relaxed text-slate-300">Envie transcricoes de audio ou requisitos em texto e deixe que nossa inteligencia de plataforma desenhe a arquitetura perfeita para o seu contexto.</p>
+            <p class="mt-3 text-sm leading-relaxed text-slate-300">Envie requisitos em texto e deixe que nossa inteligencia de plataforma desenhe a arquitetura perfeita para o seu contexto.</p>
           </article>
           <article class="group rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-cyan-300/60 hover:shadow-glow">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Previsibilidade de custos</p>
@@ -170,7 +170,7 @@ $ terraform generate --modular</pre>
         <section class="grid gap-6 lg:grid-cols-3">
           <div class="lg:col-span-2 rounded-2xl border border-white/10 bg-slate-900/60 p-6 shadow-2xl">
             <h2 class="text-lg font-semibold">Entrada da Demanda</h2>
-            <p class="mt-1 text-sm text-slate-300">Envie transcricao/texto para iniciar a orquestracao.</p>
+            <p class="mt-1 text-sm text-slate-300">Envie descricao ou arquivo para iniciar a orquestracao.</p>
             <div class="mt-4 space-y-3">
               <input
                 id="demand-title"
@@ -180,22 +180,16 @@ $ terraform generate --modular</pre>
               <textarea
                 id="demand-input"
                 rows="10"
-                placeholder="Cole aqui a transcricao ou requisitos..."
+                placeholder="Cole aqui os requisitos..."
                 class="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 outline-none focus:border-cyan-300/60"
               ></textarea>
               <input
                 id="demand-file"
                 type="file"
-                accept="audio/*,video/mp4"
+                accept=".pdf,.txt,.doc,.docx"
                 class="w-full rounded-xl border border-dashed border-white/20 bg-slate-950/50 px-4 py-3 text-sm"
               />
-              <button
-                id="transcribe-btn"
-                class="w-full rounded-xl bg-white/10 py-2 text-sm font-semibold hover:bg-white/20"
-              >
-                Transcrever Audio Automaticamente
-              </button>
-            </div>
+</div>
           </div>
 
           <div class="rounded-2xl border border-white/10 bg-slate-900/60 p-6 shadow-2xl">
@@ -284,3 +278,8 @@ $ terraform generate --modular</pre>
     <script src="/static/app.js"></script>
   </body>
 </html>
+
+
+
+
+

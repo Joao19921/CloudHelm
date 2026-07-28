@@ -1,6 +1,6 @@
-import json
+﻿import json
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
@@ -19,11 +19,11 @@ from app.schemas.demand import (
     DemandCreateRequest,
     DemandResponse,
     OrchestrateRequest,
-    TranscriptionResponse,
+
 )
 from app.services.orchestration_service import orchestrate_demand
 from app.services.terraform_service import build_terraform_modules
-from app.services.transcription_service import TranscriptionService
+
 
 router = APIRouter(tags=["demands"])
 
@@ -139,14 +139,5 @@ def orchestrate_demand_api(
     )
 
 
-@router.post("/demands/transcribe", response_model=TranscriptionResponse)
-async def transcribe_audio_api(
-    audio: UploadFile = File(...),
-    _current_user: User = Depends(get_current_user),
-):
-    result = await TranscriptionService.transcribe(audio_file=audio)
-    return TranscriptionResponse(
-        transcript=result.text,
-        source=result.source,
-        model=result.model,
-    )
+
+
