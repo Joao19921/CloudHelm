@@ -294,7 +294,7 @@ async function syncCatalog() {
     headers: authHeaders(),
     body: JSON.stringify({
       providers: ["aws", "gcp", "azure", "oci"],
-      limit_per_provider: 25,
+      limit_per_provider: 50,
     }),
   });
   if (!res.ok) {

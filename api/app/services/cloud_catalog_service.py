@@ -102,6 +102,19 @@ class CloudMasterEngine:
         filters = "serviceName eq 'Virtual Machines' or serviceName eq 'SQL Database'"
         url = "https://prices.azure.com/api/retail/prices"
         items: list[dict] = []
+        seeded = [
+            ("Virtual Machines", "Virtual Machines Baseline", 0.0120, "Hrs", "eastus"),
+            ("Container Apps", "Container Apps Baseline", 0.0400, "Hrs", "eastus"),
+            ("Azure Kubernetes Service", "AKS Baseline", 0.1000, "Hrs", "eastus"),
+            ("Azure Functions", "Functions Requests", 0.2000, "1M requests", "eastus"),
+            ("SQL Database", "Azure SQL Baseline", 0.0350, "Hrs", "eastus"),
+            ("Cosmos DB", "Cosmos DB Request Units", 0.2500, "1M RU", "eastus"),
+            ("Azure Cache for Redis", "Redis Basic Cache", 0.0300, "Hrs", "eastus"),
+            ("Storage Account", "Blob Storage Standard", 0.0180, "GB-Mo", "eastus"),
+            ("Azure Front Door", "Front Door Data Transfer", 0.0800, "GB", "global"),
+            ("Key Vault", "Key Vault Operations", 0.0300, "10K operations", "global"),
+            ("Azure Monitor", "Monitor Log Ingestion", 0.5000, "GB", "global"),
+        ]
         next_url: str | None = f"{url}?$filter={filters}"
 
         while next_url and len(items) < limit:
@@ -131,15 +144,25 @@ class CloudMasterEngine:
                     break
             next_url = payload.get("NextPageLink")
 
+        if len({get_service_type(item.get("service", ""), "azure") for item in items}) < 5:
+            baseline = [{"provider": "azure", "service": service, "display_name": name, "region": region, "price": price, "currency": "USD", "unit": unit, "icon": self.get_smart_icon(service, "azure"), "source": "seeded-baseline"} for service, name, price, unit, region in seeded]
+            return (baseline + items)[:limit]
         return items
 
     def fetch_aws_data(self, limit: int = 20) -> list[dict]:
         seeded = [
             ("Amazon EC2", "EC2 On-Demand Baseline", 0.0116, "Hrs"),
+            ("Amazon ECS", "ECS Fargate Baseline", 0.0400, "Hrs"),
+            ("Amazon EKS", "EKS Control Plane", 0.1000, "Hrs"),
+            ("AWS Lambda", "Lambda Requests", 0.2000, "1M requests"),
             ("Amazon RDS", "RDS MySQL Baseline", 0.0320, "Hrs"),
+            ("Amazon Aurora", "Aurora PostgreSQL Baseline", 0.1200, "Hrs"),
             ("Amazon ElastiCache", "Redis Small Node", 0.0270, "Hrs"),
             ("Amazon S3", "S3 Standard Storage", 0.0230, "GB-Mo"),
-            ("Amazon CloudWatch", "CloudWatch Logs Ingestion", 0.50, "GB"),
+            ("Amazon CloudFront", "CloudFront Data Transfer", 0.0850, "GB"),
+            ("Amazon Route 53", "Route 53 Hosted Zone", 0.5000, "zone-month"),
+            ("Amazon CloudWatch", "CloudWatch Logs Ingestion", 0.5000, "GB"),
+            ("Amazon EBS", "EBS gp3 Storage", 0.0800, "GB-Mo"),
         ]
         try:
             import boto3
@@ -191,7 +214,7 @@ class CloudMasterEngine:
                 )
                 if len(items) >= limit:
                     break
-            if items:
+            if items and len({get_service_type(item.get("service", ""), "aws") for item in items}) >= 3:
                 return items
         except Exception:
             pass
@@ -214,10 +237,17 @@ class CloudMasterEngine:
     def fetch_gcp_data(self, limit: int = 20) -> list[dict]:
         seeded = [
             ("Compute Engine", "E2 Shared Core Baseline", 0.0084, "Hrs"),
+            ("Cloud Run", "Cloud Run Request Compute", 0.0400, "Hrs"),
+            ("Google Kubernetes Engine", "GKE Autopilot Baseline", 0.1000, "Hrs"),
+            ("Cloud Functions", "Cloud Functions Requests", 0.4000, "1M requests"),
             ("Cloud SQL", "Cloud SQL MySQL Baseline", 0.0410, "Hrs"),
+            ("Firestore", "Firestore Document Reads", 0.0600, "100K reads"),
             ("Cloud Storage", "Standard Storage", 0.0200, "GB-Mo"),
+            ("Cloud CDN", "Cloud CDN Data Transfer", 0.0800, "GB"),
             ("Memorystore", "Redis Basic Tier", 0.0350, "Hrs"),
-            ("Cloud Logging", "Log Ingestion", 0.50, "GB"),
+            ("Cloud Pub/Sub", "Pub/Sub Message Ingestion", 0.0400, "GB"),
+            ("BigQuery", "BigQuery Analysis", 5.0000, "TB"),
+            ("Cloud Logging", "Log Ingestion", 0.5000, "GB"),
         ]
 
         from app.core.config import settings
@@ -279,7 +309,7 @@ class CloudMasterEngine:
                                 break
                         if len(items) >= limit:
                             break
-                    if items:
+                    if items and len({get_service_type(item.get("service", ""), "gcp") for item in items}) >= 3:
                         return items
             except Exception:
                 pass

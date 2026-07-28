@@ -17,7 +17,7 @@ class CatalogItemResponse(BaseModel):
 
 class CatalogSyncRequest(BaseModel):
     providers: list[str] = Field(default_factory=lambda: ["aws", "gcp", "azure", "oci"])
-    limit_per_provider: int = Field(default=20, ge=1, le=100)
+    limit_per_provider: int = Field(default=50, ge=1, le=100)
 
 
 class CatalogSyncResponse(BaseModel):
