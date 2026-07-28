@@ -1,4 +1,4 @@
-# Rotas da API
+﻿# Rotas da API
 
 Base URL de producao: `https://cloudhelm-platform.onrender.com`
 
@@ -11,6 +11,7 @@ Todas as rotas de negocio usam prefixo global `/api`, exceto UI server-side e he
 | GET | `/health` | Nao | Healthcheck do Render. |
 | GET | `/` | Nao | Pagina server-side simples do backend. |
 | GET | `/backoffice` | Nao | Pagina server-side simples do backend. |
+| GET | `/static/*` | Nao | Arquivos estaticos internos do backend. |
 
 ## Autenticacao
 
@@ -30,8 +31,8 @@ Todas as rotas de negocio usam prefixo global `/api`, exceto UI server-side e he
 | GET | `/api/terraform/{provider}` | Nao | Retorna template Terraform do provedor. |
 | POST | `/api/demands` | JWT | Cria demanda de infraestrutura. |
 | GET | `/api/demands` | JWT | Lista demandas do usuario. |
-| POST | `/api/demands/{demand_id}/orchestrate` | JWT | Gera analise, ranking, custos e sugestao Terraform; usa fallback deterministico se a IA externa estiver indisponivel. |
-| POST | `/api/demands/transcribe` | JWT | Transcreve audio quando OpenAI estiver configurada. |
+| POST | `/api/demands/{demand_id}/orchestrate` | JWT | Gera analise, ranking, custos e sugestao Terraform. |
+
 
 ## Catalogo cloud
 
@@ -47,6 +48,22 @@ Todas as rotas de negocio usam prefixo global `/api`, exceto UI server-side e he
 | --- | --- | --- | --- |
 | POST | `/api/pricing/estimate` | Nao | Estima custo mensal por provedor. |
 
+Payload principal de `/api/pricing/estimate`:
+
+```json
+{
+  "providers": ["aws", "gcp", "azure", "oci"],
+  "workload_size": "small",
+  "monthly_hours": 730,
+  "compute_units": 1,
+  "database_units": 1,
+  "cache_units": 0,
+  "storage_gb": 100,
+  "data_transfer_gb": 100,
+  "observability_gb": 20
+}
+```
+
 ## Backoffice
 
 | Metodo | Rota | Auth | Descricao |
@@ -56,6 +73,14 @@ Todas as rotas de negocio usam prefixo global `/api`, exceto UI server-side e he
 | POST | `/api/backoffice/users/bulk-approve` | Admin JWT | Aprova usuarios em lote. |
 | POST | `/api/backoffice/users/{user_id}/revoke` | Admin JWT | Revoga acesso. |
 | POST | `/api/backoffice/users/{user_id}/role` | Admin JWT | Altera papel do usuario. |
+| POST | `/api/backoffice/users/temporary-access` | Admin JWT | Define acesso temporario. |
 | GET | `/api/backoffice/audit-logs` | Admin JWT | Lista eventos administrativos. |
 | GET | `/api/backoffice/llm-config` | Admin JWT | Le configuracao de modelos. |
 | PUT | `/api/backoffice/llm-config` | Admin JWT | Atualiza configuracao de modelos. |
+
+## Cuidados
+
+- Nao criar endpoints com prefixo `/api` dentro dos arquivos de endpoint; o prefixo ja vem de `app.include_router(api_router, prefix="/api")`.
+- Rotas protegidas devem usar dependencias de autenticacao em `api/app/core/deps.py`.
+- Novas rotas devem ser registradas em `api/app/api_v1/router.py`.
+

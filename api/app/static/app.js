@@ -1,4 +1,7 @@
-const AUTH_TOKEN_KEY = "cloudhelm.auth.token";
+﻿const AUTH_TOKEN_KEY = "cloudhelm.auth.token";
+const config = window.CLOUDHELM_CONFIG || {};
+const API_BASE_URL = (config.API_BASE_URL || "").replace(/\/$/, "");
+
 const state = {
   token: null,
   session: null,
@@ -18,6 +21,10 @@ const catalogGridEl = $("catalog-grid");
 const catalogMetaEl = $("catalog-meta");
 const backofficeLinkEl = $("backoffice-link");
 const logoutBtnEl = $("logout-btn");
+
+function apiUrl(path) {
+  return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
+}
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
@@ -45,11 +52,12 @@ function loadTokenFromUrlOrStorage() {
   const url = new URL(window.location.href);
   const token = url.searchParams.get("token");
   const pending = url.searchParams.get("pending");
+  const authError = url.searchParams.get("auth_error");
 
   if (token) {
     saveToken(token);
     url.searchParams.delete("token");
-    window.history.replaceState({}, "", url.pathname);
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
   } else {
     saveToken(localStorage.getItem(AUTH_TOKEN_KEY));
   }
@@ -57,7 +65,13 @@ function loadTokenFromUrlOrStorage() {
   if (pending) {
     setStatus("Acesso pendente. Aguarde aprovacao do administrador CloudHelm.", true);
     url.searchParams.delete("pending");
-    window.history.replaceState({}, "", url.pathname);
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  if (authError) {
+    setStatus(`Falha no login GitHub: ${authError}`, true);
+    url.searchParams.delete("auth_error");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
   }
 }
 
@@ -70,7 +84,7 @@ async function refreshSession() {
     return;
   }
 
-  const res = await fetch("/api/auth/session", { headers: authHeaders() });
+  const res = await fetch(apiUrl("/api/auth/session"), { headers: authHeaders() });
   if (!res.ok) {
     saveToken(null);
     state.session = null;
@@ -213,7 +227,7 @@ function renderCatalog(list) {
       (item) => `
       <div class="rounded-xl border border-white/10 bg-slate-950/60 p-4">
         <div class="flex items-start justify-between gap-3">
-          <img src="${item.icon}" class="h-10 w-10 object-contain" onerror="this.src='/static/icons/generic.svg'" />
+          <img src="${item.icon}" class="h-10 w-10 object-contain" onerror="this.src='./assets/icons/generic.svg'" />
           <span class="rounded bg-white/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand-100">${item.provider}</span>
         </div>
         <p class="mt-3 text-sm font-semibold text-slate-100">${item.display_name}</p>
@@ -244,7 +258,7 @@ function applyCatalogFilter() {
 async function loadCatalog() {
   const provider = $("catalog-provider-filter").value;
   const search = $("catalog-search").value.trim();
-  const res = await fetch(`/api/catalog/items?provider=${provider}&search=${encodeURIComponent(search)}&limit=300`);
+  const res = await fetch(apiUrl(`/api/catalog/items?provider=${provider}&search=${encodeURIComponent(search)}&limit=300`));
   if (!res.ok) {
     catalogMetaEl.textContent = "Falha ao carregar catalogo.";
     return;
@@ -259,11 +273,11 @@ async function syncCatalog() {
     return;
   }
   setStatus("Sincronizando catalogo cloud...");
-  const res = await fetch("/api/catalog/sync", {
+  const res = await fetch(apiUrl("/api/catalog/sync"), {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({
-      providers: ["aws", "gcp", "azure"],
+      providers: ["aws", "gcp", "azure", "oci"],
       limit_per_provider: 25,
     }),
   });
@@ -280,7 +294,7 @@ async function syncCatalog() {
 }
 
 async function loginWithGithub() {
-  const res = await fetch("/api/auth/github/url");
+  const res = await fetch(apiUrl("/api/auth/github/url"));
   if (!res.ok) {
     setStatus("GitHub OAuth nao configurado no servidor.", true);
     return;
@@ -306,29 +320,17 @@ async function orchestrate() {
 
   const title = $("demand-title").value.trim();
   let rawInput = $("demand-input").value.trim();
-  let inputType = "text";
   const provider = $("provider").value;
   const fileInput = $("demand-file");
 
-  if (fileInput.files.length > 0 && !rawInput) {
-    setStatus("Transcrevendo audio...");
-    const form = new FormData();
-    form.append("audio", fileInput.files[0]);
-    const transcribeRes = await fetch("/api/demands/transcribe", {
-      method: "POST",
-      headers: state.token ? { Authorization: `Bearer ${state.token}` } : {},
-      body: form,
-    });
-    if (!transcribeRes.ok) {
-      setStatus("Falha na transcricao automatica. Preencha o texto manualmente.", true);
+  if (fileInput.files.length > 0) {
+    const file = fileInput.files[0];
+    const allowedTypes = [".pdf", ".txt", ".doc", ".docx"];
+    const isAllowed = allowedTypes.some((ext) => file.name.toLowerCase().endsWith(ext));
+    if (!isAllowed) {
+      setStatus("Anexe apenas PDF, TXT, DOC ou DOCX.", true);
       return;
     }
-    const transcriptData = await transcribeRes.json();
-    rawInput = transcriptData.transcript;
-    inputType = "audio_transcript";
-    $("demand-input").value = rawInput;
-  } else if (fileInput.files.length > 0) {
-    inputType = "audio_transcript";
   }
 
   if (!title || rawInput.length < 10) {
@@ -337,13 +339,13 @@ async function orchestrate() {
   }
 
   setStatus("Criando demanda...");
-  const createRes = await fetch("/api/demands", {
+  const createRes = await fetch(apiUrl("/api/demands"), {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({
       title,
       raw_input: rawInput,
-      input_type: inputType,
+      input_type: fileInput.files.length > 0 ? "document" : "text",
     }),
   });
   if (!createRes.ok) {
@@ -357,7 +359,7 @@ async function orchestrate() {
   const demand = await createRes.json();
 
   setStatus("Executando orquestracao...");
-  const orchestrationRes = await fetch(`/api/demands/${demand.id}/orchestrate`, {
+  const orchestrationRes = await fetch(apiUrl(`/api/demands/${demand.id}/orchestrate`), {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({ provider }),
@@ -380,37 +382,9 @@ async function orchestrate() {
   setStatus("Orquestracao concluida com sucesso.");
 }
 
-async function transcribeAudio() {
-  if (!state.token) {
-    setStatus("Faca login com GitHub para transcrever audio.", true);
-    return;
-  }
-  const fileInput = $("demand-file");
-  if (!fileInput.files.length) {
-    setStatus("Selecione um arquivo de audio antes de transcrever.", true);
-    return;
-  }
-  setStatus("Transcrevendo audio...");
-  const form = new FormData();
-  form.append("audio", fileInput.files[0]);
-  const res = await fetch("/api/demands/transcribe", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${state.token}` },
-    body: form,
-  });
-  if (!res.ok) {
-    setStatus("Falha na transcricao automatica.", true);
-    return;
-  }
-  const data = await res.json();
-  $("demand-input").value = data.transcript;
-  setStatus(`Transcricao concluida via ${data.source} (${data.model}).`);
-}
-
 $("login-github-btn").addEventListener("click", loginWithGithub);
 $("logout-btn").addEventListener("click", logout);
 $("orchestrate-btn").addEventListener("click", orchestrate);
-$("transcribe-btn").addEventListener("click", transcribeAudio);
 $("catalog-sync-btn").addEventListener("click", syncCatalog);
 $("catalog-provider-filter").addEventListener("change", loadCatalog);
 $("catalog-search").addEventListener("input", applyCatalogFilter);

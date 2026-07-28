@@ -1,4 +1,4 @@
-const AUTH_TOKEN_KEY = "cloudhelm.auth.token";
+﻿const AUTH_TOKEN_KEY = "cloudhelm.auth.token";
 const config = window.CLOUDHELM_CONFIG || {};
 const API_BASE_URL = (config.API_BASE_URL || "").replace(/\/$/, "");
 
@@ -320,39 +320,21 @@ async function orchestrate() {
 
   const title = $("demand-title").value.trim();
   let rawInput = $("demand-input").value.trim();
-  let inputType = "text";
   const provider = $("provider").value;
   const fileInput = $("demand-file");
 
   if (fileInput.files.length > 0) {
-    setStatus("Processando arquivo e transcrevendo audio se necessario...");
     const file = fileInput.files[0];
-    const isAudio = file.type.startsWith("audio/") || file.type === "video/mp4";
-
-    if (isAudio) {
-      const form = new FormData();
-      form.append("audio", file);
-      const transcribeRes = await fetch(apiUrl("/api/demands/transcribe"), {
-        method: "POST",
-        headers: state.token ? { Authorization: `Bearer ${state.token}` } : {},
-        body: form,
-      });
-      if (!transcribeRes.ok) {
-        console.warn("Falha na transcricao. Continuando com texto fornecido.");
-      } else {
-        const transcriptData = await transcribeRes.json();
-        if (rawInput) {
-          rawInput += "\n\n[Transcricao do audio]\n" + transcriptData.transcript;
-        } else {
-          rawInput = transcriptData.transcript;
-        }
-        inputType = "mixed_text_audio";
-      }
+    const allowedTypes = [".pdf", ".txt", ".doc", ".docx"];
+    const isAllowed = allowedTypes.some((ext) => file.name.toLowerCase().endsWith(ext));
+    if (!isAllowed) {
+      setStatus("Anexe apenas PDF, TXT, DOC ou DOCX.", true);
+      return;
     }
   }
 
   if (!title || rawInput.length < 10) {
-    setStatus("Informe titulo e uma descricao valida da demanda (minimo 10 caracteres).", true);
+    setStatus("Informe titulo e uma descricao valida da demanda.", true);
     return;
   }
 
@@ -363,7 +345,7 @@ async function orchestrate() {
     body: JSON.stringify({
       title,
       raw_input: rawInput,
-      input_type: inputType,
+      input_type: fileInput.files.length > 0 ? "document" : "text",
     }),
   });
   if (!createRes.ok) {
@@ -400,37 +382,9 @@ async function orchestrate() {
   setStatus("Orquestracao concluida com sucesso.");
 }
 
-async function transcribeAudio() {
-  if (!state.token) {
-    setStatus("Faca login com GitHub para transcrever audio.", true);
-    return;
-  }
-  const fileInput = $("demand-file");
-  if (!fileInput.files.length) {
-    setStatus("Selecione um arquivo de audio antes de transcrever.", true);
-    return;
-  }
-  setStatus("Transcrevendo audio...");
-  const form = new FormData();
-  form.append("audio", fileInput.files[0]);
-  const res = await fetch(apiUrl("/api/demands/transcribe"), {
-    method: "POST",
-    headers: { Authorization: `Bearer ${state.token}` },
-    body: form,
-  });
-  if (!res.ok) {
-    setStatus("Falha na transcricao automatica.", true);
-    return;
-  }
-  const data = await res.json();
-  $("demand-input").value = data.transcript;
-  setStatus(`Transcricao concluida via ${data.source} (${data.model}).`);
-}
-
 $("login-github-btn").addEventListener("click", loginWithGithub);
 $("logout-btn").addEventListener("click", logout);
 $("orchestrate-btn").addEventListener("click", orchestrate);
-$("transcribe-btn").addEventListener("click", transcribeAudio);
 $("catalog-sync-btn").addEventListener("click", syncCatalog);
 $("catalog-provider-filter").addEventListener("change", loadCatalog);
 $("catalog-search").addEventListener("input", applyCatalogFilter);
