@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 from app.services.llm_service import LLMService
@@ -67,6 +68,53 @@ def _build_architecture(raw_input: str, provider: str, ai: dict[str, Any]) -> di
         "ai": ai,
     }
 
+
+
+def _build_product_artifacts(raw_input: str, provider: str, costs: dict[str, Any]) -> dict[str, Any]:
+    """Create explainable artifacts for business and technical review."""
+    normalized = raw_input.lower()
+    user_match = re.search(r"(\d[\d.,]*)\s*(?:mil|k)?\s*(?:usuários|usuarios|users)", normalized)
+    scale = user_match.group(0) if user_match else "a definir"
+    objectives = [
+        "Traduzir o desafio de negócio em componentes e responsabilidades técnicas.",
+        f"Estabelecer uma infraestrutura de referência em {provider.upper()}.",
+        "Criar uma base rastreável para validação, evolução e implementação.",
+    ]
+    non_functional = []
+    for keywords, label in [
+        (("disponibilidade", "alta disponibilidade", "ha", "sla"), "Disponibilidade e continuidade"),
+        (("segurança", "seguranca", "lgpd", "compliance", "gdpr"), "Segurança e conformidade"),
+        (("escala", "usuários", "usuarios", "users", "pico"), "Escalabilidade e capacidade"),
+        (("latência", "latencia", "tempo real", "performance"), "Performance e latência"),
+        (("backup", "rto", "rpo", "desastre"), "Recuperação e proteção de dados"),
+    ]:
+        if any(keyword in normalized for keyword in keywords):
+            non_functional.append(label)
+    if not non_functional:
+        non_functional = ["Disponibilidade", "Segurança", "Escalabilidade", "Observabilidade"]
+    decisions = [
+        {"service": "Entrada e API", "purpose": "Receber solicitações e expor contratos da aplicação.", "why": "Cria um limite claro entre usuários, integrações e domínio.", "alternative": "API Gateway gerenciado ou ingress do cluster."},
+        {"service": "Compute gerenciado", "purpose": "Executar os serviços da aplicação com escala controlada.", "why": "Reduz a carga operacional inicial e deixa a capacidade explícita.", "alternative": "Kubernetes quando houver necessidade comprovada de controle fino."},
+        {"service": "Dados e persistência", "purpose": "Armazenar dados transacionais com política de backup definida.", "why": "Separa o estado da aplicação e permite evoluir disponibilidade por etapas.", "alternative": "Banco serverless ou distribuído quando o padrão justificar."},
+        {"service": "Observabilidade", "purpose": "Acompanhar saúde, erros, latência e comportamento da solução.", "why": "Permite validar a arquitetura em operação, não apenas no diagrama.", "alternative": "Stack centralizada integrada por OpenTelemetry."},
+    ]
+    tradeoffs = [
+        {"decision": "Compute gerenciado vs. Kubernetes", "benefit": "Menor complexidade operacional e time-to-value.", "cost": "Menos controle de runtime e portabilidade específica.", "when": "Começar gerenciado; migrar quando houver evidência."},
+        {"decision": "Redundância multi-zona", "benefit": "Maior disponibilidade e recuperação automática.", "cost": "Aumenta custo de compute, dados e operação.", "when": "Aplicar aos componentes críticos conforme SLA e RTO/RPO."},
+        {"decision": "Cache distribuído", "benefit": "Reduz latência e pressão no banco.", "cost": "Adiciona invalidação, consistência e operação.", "when": "Introduzir após identificar leituras repetidas ou gargalos."},
+    ]
+    risks = [
+        {"severity": "alta", "title": "Requisitos de recuperação ainda não confirmados", "detail": "RTO, RPO, backup e disaster recovery precisam de valores aprovados.", "mitigation": "Validar metas e testar restauração antes do go-live."},
+        {"severity": "média", "title": "Observabilidade pode ficar para depois", "detail": "Sem métricas, logs e traces não há como validar a base em operação.", "mitigation": "Definir sinais mínimos e alertas junto com o primeiro deploy."},
+        {"severity": "média", "title": "Dependências externas não detalhadas", "detail": "Integrações, limites de terceiros e contratos podem alterar o desenho.", "mitigation": "Mapear sistemas externos, SLAs, autenticação e estratégias de falha."},
+    ]
+    plan = [
+        {"step": "Validar contexto", "description": "Confirmar atores, jornadas, regras de negócio, escala e metas de qualidade.", "owner": "Produto + Engenharia"},
+        {"step": "Fechar contratos", "description": "Definir APIs, eventos, dados, integrações e fronteiras dos componentes.", "owner": "Arquitetura + Backend"},
+        {"step": "Provisionar fundação", "description": "Criar rede, identidade, compute, dados, secrets e observabilidade mínima.", "owner": "Plataforma + DevOps"},
+        {"step": "Validar operação", "description": "Executar testes de carga, falha, backup, segurança e custo.", "owner": "QA + SRE"},
+    ]
+    return {"executive_summary": {"interpretation": raw_input[:500], "scale": scale, "objectives": objectives, "non_functional_requirements": non_functional, "provider_reference": provider.upper(), "confidence_note": "Base inicial para validação humana; decisões críticas dependem de requisitos confirmados."}, "service_decisions": decisions, "tradeoffs": tradeoffs, "risks": risks, "implementation_plan": plan, "cost_scope": list((costs.get("monthly_estimate") or {}).keys())}
 
 def _monthly_cost_midpoint(cost_range: dict[str, float]) -> float:
     return float(cost_range["min"] + cost_range["max"]) / 2.0
@@ -161,6 +209,7 @@ def orchestrate_demand(
 
     architecture = _build_architecture(raw_input=raw_input, provider=selected_provider, ai=ai_context)
     terraform = build_terraform_modules(provider=selected_provider)
+    artifacts = _build_product_artifacts(raw_input=raw_input, provider=selected_provider, costs=costs)
     return {
         "provider": selected_provider,
         "architecture": architecture,
@@ -168,4 +217,5 @@ def orchestrate_demand(
         "terraform": terraform,
         "ranking": ranking,
         "ai": ai_context,
+        **artifacts,
     }
