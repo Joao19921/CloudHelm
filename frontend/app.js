@@ -1,4 +1,4 @@
-﻿const AUTH_TOKEN_KEY = "cloudhelm.auth.token";
+const AUTH_TOKEN_KEY = "cloudhelm.auth.token";
 const config = window.CLOUDHELM_CONFIG || {};
 const API_BASE_URL = (config.API_BASE_URL || "").replace(/\/$/, "");
 
@@ -24,6 +24,12 @@ const logoutBtnEl = $("logout-btn");
 
 function apiUrl(path) {
   return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
+}
+
+function iconUrl(path) {
+  if (!path) return "./assets/icons/generic.svg";
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 function setStatus(message, isError = false) {
@@ -227,7 +233,7 @@ function renderCatalog(list) {
       (item) => `
       <div class="rounded-xl border border-white/10 bg-slate-950/60 p-4">
         <div class="flex items-start justify-between gap-3">
-          <img src="${item.icon}" class="h-10 w-10 object-contain" onerror="this.src='./assets/icons/generic.svg'" />
+          <img src="${iconUrl(item.icon)}" class="h-10 w-10 object-contain" onerror="this.src='./assets/icons/generic.svg'" />
           <span class="rounded bg-white/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand-100">${item.provider}</span>
         </div>
         <p class="mt-3 text-sm font-semibold text-slate-100">${item.display_name}</p>

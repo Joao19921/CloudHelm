@@ -5,9 +5,36 @@ import zipfile
 from datetime import datetime, timezone
 
 import requests
-from thefuzz import fuzz, process
 
 from app.repositories.catalog_repository import replace_provider_items
+
+
+SERVICE_ICONS = {
+    "aws": {
+        "compute": "/static/icons/cloud/aws-ec2.svg",
+        "database": "/static/icons/cloud/aws-rds.svg",
+        "cache": "/static/icons/cloud/aws-elasticache.svg",
+        "storage": "/static/icons/cloud/aws-s3.svg",
+        "observability": "/static/icons/cloud/aws-cloudwatch.svg",
+        "default": "/static/icons/cloud/aws-logo.svg",
+    },
+    "azure": {
+        "compute": "/static/icons/cloud/azure-vm.svg",
+        "database": "/static/icons/cloud/azure-sql.svg",
+        "cache": "/static/icons/cloud/azure-redis.svg",
+        "storage": "/static/icons/cloud/azure-storage.svg",
+        "observability": "/static/icons/cloud/azure-monitor.svg",
+        "default": "/static/icons/cloud/azure-vm.svg",
+    },
+    "gcp": {
+        "compute": "/static/icons/cloud/gcp-compute.svg",
+        "database": "/static/icons/cloud/gcp-sql.svg",
+        "storage": "/static/icons/cloud/gcp-storage.svg",
+        "observability": "/static/icons/cloud/gcp-observability.svg",
+        "default": "/static/icons/cloud/gcp-compute-alt.svg",
+    },
+    "oci": {"default": "/static/icons/cloud/oci.svg"},
+}
 
 
 class CloudMasterEngine:
@@ -39,18 +66,20 @@ class CloudMasterEngine:
                 written += 1
         return written
 
-    def get_smart_icon(self, service_name: str) -> str:
-        all_icons = [f for f in os.listdir(self.icon_dir) if f.endswith(".svg")]
-        if not all_icons:
-            return "/static/icons/generic.svg"
-        result = process.extractOne(service_name, all_icons, scorer=fuzz.token_set_ratio)
-        if not result:
-            return "/static/icons/generic.svg"
-        match, score = result[0], result[1]
-        if score > 50:
-            return f"/static/icons/{match}"
-        return "/static/icons/generic.svg"
-
+    def get_smart_icon(self, service_name: str, provider: str = "") -> str:
+        normalized = f"{service_name} {provider}".lower()
+        icon_set = SERVICE_ICONS.get(provider.lower(), {})
+        keywords = {
+            "compute": ("compute", "ec2", "virtual machine", "vm", "instance"),
+            "database": ("database", "rds", "sql", "postgres", "mysql"),
+            "cache": ("cache", "redis", "elasticache", "memorystore"),
+            "storage": ("storage", "s3", "bucket", "object"),
+            "observability": ("cloudwatch", "logging", "monitor", "log analytics"),
+        }
+        for category, terms in keywords.items():
+            if any(term in normalized for term in terms) and category in icon_set:
+                return icon_set[category]
+        return icon_set.get("default", "/static/icons/generic.svg")
     def fetch_azure_data(self, limit: int = 20) -> list[dict]:
         filters = "serviceName eq 'Virtual Machines' or serviceName eq 'SQL Database'"
         url = "https://prices.azure.com/api/retail/prices"
@@ -76,7 +105,7 @@ class CloudMasterEngine:
                         "price": float(price),
                         "currency": item.get("currencyCode", "USD"),
                         "unit": item.get("unitOfMeasure", "Unit"),
-                        "icon": self.get_smart_icon(item.get("serviceName", "Generic")),
+                        "icon": self.get_smart_icon(item.get("serviceName", "Generic"), "azure"),
                         "source": "azure-retail-api",
                     }
                 )
@@ -138,7 +167,7 @@ class CloudMasterEngine:
                         "price": float(price_per_unit),
                         "currency": "USD",
                         "unit": unit,
-                        "icon": self.get_smart_icon(service),
+                        "icon": self.get_smart_icon(service, "aws"),
                         "source": "aws-pricing-api",
                     }
                 )
@@ -158,7 +187,7 @@ class CloudMasterEngine:
                 "price": float(price),
                 "currency": "USD",
                 "unit": unit,
-                "icon": self.get_smart_icon(svc),
+                "icon": self.get_smart_icon(svc, "aws"),
                 "source": "seeded-baseline",
             }
             for svc, name, price, unit in seeded[:limit]
@@ -224,7 +253,7 @@ class CloudMasterEngine:
                                     "price": float(price_val),
                                     "currency": "USD",
                                     "unit": unit,
-                                    "icon": self.get_smart_icon(svc_name),
+                                    "icon": self.get_smart_icon(svc_name, "gcp"),
                                     "source": "gcp-billing-api",
                                 }
                             )
@@ -246,7 +275,7 @@ class CloudMasterEngine:
                 "price": float(price),
                 "currency": "USD",
                 "unit": unit,
-                "icon": self.get_smart_icon(svc),
+                "icon": self.get_smart_icon(svc, "gcp"),
                 "source": "seeded-baseline",
             }
             for svc, name, price, unit in seeded[:limit]
@@ -299,7 +328,7 @@ class CloudMasterEngine:
                         "price": float(price_val),
                         "currency": "USD",
                         "unit": metric,
-                        "icon": self.get_smart_icon(service),
+                        "icon": self.get_smart_icon(service, "oci"),
                         "source": "oci-retail-api",
                     }
                 )

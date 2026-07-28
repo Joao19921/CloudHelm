@@ -44,6 +44,7 @@ def get_catalog_items(
         search=search.strip(),
         limit=limit,
     )
+    icon_engine = CloudMasterEngine()
     return [
         CatalogItemResponse(
             id=item.id,
@@ -54,7 +55,7 @@ def get_catalog_items(
             price=item.price,
             currency=item.currency,
             unit=item.unit,
-            icon=item.icon,
+            icon=icon_engine.get_smart_icon(item.service, item.provider),
             source=item.source,
         )
         for item in items
