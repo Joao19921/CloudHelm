@@ -108,9 +108,22 @@ def get_demand_analysis_api(
     current_user: User = Depends(get_current_user),
 ):
     demand = get_demand_by_id(db, demand_id=demand_id, owner_id=current_user.id)
-    if not demand or not demand.analysis_json:
+    if not demand:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Base arquitetural não encontrada.")
-    return DemandAnalysisResponse(demand_id=demand.id, **json.loads(demand.analysis_json))
+    if demand.analysis_json:
+        payload = json.loads(demand.analysis_json)
+    elif demand.architecture_json:
+        payload = {
+            "provider": demand.provider_selected or "aws",
+            "architecture": json.loads(demand.architecture_json),
+            "costs": json.loads(demand.costs_json or "{}"),
+            "terraform": json.loads(demand.terraform_json or "{}"),
+            "ranking": {},
+            "ai": {},
+        }
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Esta base ainda não possui uma análise para abrir.")
+    return DemandAnalysisResponse(demand_id=demand.id, **payload)
 
 
 @router.delete("/demands/{demand_id}", status_code=status.HTTP_204_NO_CONTENT)
