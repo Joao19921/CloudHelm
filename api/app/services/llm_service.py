@@ -1,3 +1,4 @@
+from pathlib import Path
 from dataclasses import dataclass
 
 import requests
@@ -15,22 +16,29 @@ class LLMResult:
 
 class LLMService:
     @staticmethod
+    def _load_playbook() -> str:
+        candidates = [
+            Path("/app/docs/architecture-analysis-playbook.md"),
+            Path(__file__).resolve().parents[2] / "docs" / "architecture-analysis-playbook.md",
+            Path(__file__).resolve().parents[3] / "docs" / "architecture-analysis-playbook.md",
+        ]
+        for path in candidates:
+            if path.exists():
+                return path.read_text(encoding="utf-8")
+        return ""
+
+    @staticmethod
     def _build_prompt(raw_input: str, provider: str) -> str:
+        playbook = LLMService._load_playbook()
         return (
-            "You are a principal cloud architect. "
-            "Generate a concise architectural foundation brief for CloudHelm.\n"
-            "Requirements:\n"
-            f"{raw_input}\n\n"
-            f"Preferred cloud provider: {provider}.\n"
-            "Return in plain text with sections:\\n"
-            "1) Business context: problem, users, value and success signals\\n"
-            "2) Discovery gaps: assumptions, constraints and questions that block a decision\\n"
-            "3) Functional and non-functional requirements: scale, performance, availability, security, audit, backup, RTO/RPO and compliance\\n"
-            "4) Recommended architecture: style, boundaries, responsibilities and dependencies\\n"
-            "5) Alternatives and trade-offs: explain why not monolith, modular monolith, microservices, event-driven or serverless when relevant\\n"
-            "6) Infrastructure, security, DevOps, data and API decisions\\n"
-            "7) Delivery, cost, risks, operations and next steps\\n"
-            "Be explicit when information is missing. Keep under 420 words."
+            "You are a principal cloud architect following the CloudHelm Architecture Analysis Playbook. "
+            "Produce a deep, execution-oriented technical analysis, not a generic technology list.\n\n"
+            f"PLAYBOOK:\n{playbook}\n\n"
+            f"DEMAND: {raw_input}\n\n"
+            f"PREFERRED CLOUD REFERENCE: {provider}.\n"
+            "Apply the playbook strictly. Separate facts, assumptions, gaps and recommendations. "
+            "Return structured Markdown with diagrams when useful, explicit alternatives, trade-offs, risks, costs, delivery and operations. "
+            "Never invent missing requirements; formulate objective questions instead."
         )
 
     @staticmethod
