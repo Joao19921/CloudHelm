@@ -129,6 +129,7 @@ def get_demand_analysis_api(
         }
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Esta base ainda não possui uma análise para abrir.")
+    payload.pop("demand_id", None)
     return DemandAnalysisResponse(demand_id=demand.id, **payload)
 
 
