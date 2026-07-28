@@ -18,6 +18,7 @@ class Demand(Base):
     architecture_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     costs_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     terraform_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    analysis_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

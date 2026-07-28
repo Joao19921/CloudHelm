@@ -1,8 +1,11 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.demand import Demand
 
+
+def count_demands_by_owner(db: Session, owner_id: int) -> int:
+    return int(db.scalar(select(func.count(Demand.id)).where(Demand.owner_id == owner_id)) or 0)
 
 def create_demand(
     db: Session,
@@ -44,13 +47,20 @@ def save_orchestration_result(
     architecture_json: str,
     costs_json: str,
     terraform_json: str,
+    analysis_json: str,
 ) -> Demand:
     demand.provider_selected = provider
     demand.status = "orchestrated"
     demand.architecture_json = architecture_json
     demand.costs_json = costs_json
     demand.terraform_json = terraform_json
+    demand.analysis_json = analysis_json
     db.add(demand)
     db.commit()
     db.refresh(demand)
     return demand
+
+
+def delete_demand(db: Session, demand: Demand) -> None:
+    db.delete(demand)
+    db.commit()

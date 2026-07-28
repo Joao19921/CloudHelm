@@ -1,4 +1,4 @@
-﻿import json
+import json
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -9,10 +9,12 @@ from app.models.user import User
 from app.repositories.app_settings_repository import get_llm_runtime_config
 from app.repositories.catalog_repository import list_catalog_items, providers_summary
 from app.repositories.demand_repository import (
+    count_demands_by_owner,
     create_demand,
     get_demand_by_id,
     list_demands_by_owner,
     save_orchestration_result,
+    delete_demand,
 )
 from app.schemas.demand import (
     DemandAnalysisResponse,
@@ -54,6 +56,9 @@ def create_demand_api(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if count_demands_by_owner(db, current_user.id) >= 3:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Limite de 3 bases atingido. Apague uma base antes de criar outra.")
+
     demand = create_demand(
         db=db,
         owner_id=current_user.id,
@@ -69,6 +74,7 @@ def create_demand_api(
         provider_selected=demand.provider_selected,
         status=demand.status,
         created_at=demand.created_at,
+        has_analysis=bool(demand.analysis_json),
     )
 
 
@@ -87,10 +93,36 @@ def list_demands_api(
             provider_selected=d.provider_selected,
             status=d.status,
             created_at=d.created_at,
+            has_analysis=bool(d.analysis_json),
         )
         for d in demands
     ]
 
+
+
+
+@router.get("/demands/{demand_id}/analysis", response_model=DemandAnalysisResponse)
+def get_demand_analysis_api(
+    demand_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    demand = get_demand_by_id(db, demand_id=demand_id, owner_id=current_user.id)
+    if not demand or not demand.analysis_json:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Base arquitetural não encontrada.")
+    return DemandAnalysisResponse(demand_id=demand.id, **json.loads(demand.analysis_json))
+
+
+@router.delete("/demands/{demand_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_demand_api(
+    demand_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    demand = get_demand_by_id(db, demand_id=demand_id, owner_id=current_user.id)
+    if not demand:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Base arquitetural não encontrada.")
+    delete_demand(db, demand)
 
 @router.post("/demands/{demand_id}/orchestrate", response_model=DemandAnalysisResponse)
 def orchestrate_demand_api(
@@ -127,16 +159,9 @@ def orchestrate_demand_api(
         architecture_json=json.dumps(result["architecture"]),
         costs_json=json.dumps(result["costs"]),
         terraform_json=json.dumps(result["terraform"]),
+        analysis_json=json.dumps(result),
     )
-    return DemandAnalysisResponse(
-        demand_id=demand.id,
-        provider=result["provider"],
-        architecture=result["architecture"],
-        costs=result["costs"],
-        terraform=result["terraform"],
-        ranking=result["ranking"],
-        ai=result["ai"],
-    )
+    return DemandAnalysisResponse(demand_id=demand.id, **result)
 
 
 

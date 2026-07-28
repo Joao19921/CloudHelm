@@ -133,12 +133,22 @@ def ensure_users_schema_columns() -> None:
                 )
 
 
+def ensure_demands_schema_columns() -> None:
+    inspector = inspect(engine)
+    if "demands" not in inspector.get_table_names():
+        return
+    existing_columns = {column["name"] for column in inspector.get_columns("demands")}
+    if "analysis_json" not in existing_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE demands ADD COLUMN analysis_json TEXT NULL"))
+
 @app.on_event("startup")
 def startup() -> None:
     wait_for_database()
     Base.metadata.create_all(bind=engine)
     try:
         ensure_users_schema_columns()
+        ensure_demands_schema_columns()
     except Exception as e:
         logger.warning("Failed to ensure user schema columns: %s", e)
     
