@@ -35,7 +35,7 @@ def sync_catalog(
 def get_catalog_items(
     provider: str = Query(default="all"),
     search: str = Query(default=""),
-    limit: int = Query(default=120, ge=1, le=500),
+    limit: int = Query(default=500, ge=1, le=500),
     db: Session = Depends(get_db),
 ):
     items = list_catalog_items(

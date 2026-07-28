@@ -16,7 +16,7 @@ def list_catalog_items(
     db: Session,
     provider: str | None = None,
     search: str | None = None,
-    limit: int = 120,
+    limit: int = 500,
 ) -> list[CloudCatalogItem]:
     stmt = select(CloudCatalogItem)
     filters = []

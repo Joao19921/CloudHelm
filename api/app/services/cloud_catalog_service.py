@@ -114,6 +114,10 @@ class CloudMasterEngine:
             ("Azure Front Door", "Front Door Data Transfer", 0.0800, "GB", "global"),
             ("Key Vault", "Key Vault Operations", 0.0300, "10K operations", "global"),
             ("Azure Monitor", "Monitor Log Ingestion", 0.5000, "GB", "global"),
+            ("API Management", "API Management Calls", 3.5000, "10K calls", "global"),
+            ("Event Grid", "Event Grid Operations", 0.6000, "1M operations", "global"),
+            ("Application Gateway", "Application Gateway WAF", 0.0250, "Hrs", "eastus"),
+            ("Microsoft Entra ID", "Entra ID Premium", 6.0000, "user-month", "global"),
         ]
         next_url: str | None = f"{url}?$filter={filters}"
 
@@ -163,6 +167,12 @@ class CloudMasterEngine:
             ("Amazon Route 53", "Route 53 Hosted Zone", 0.5000, "zone-month"),
             ("Amazon CloudWatch", "CloudWatch Logs Ingestion", 0.5000, "GB"),
             ("Amazon EBS", "EBS gp3 Storage", 0.0800, "GB-Mo"),
+            ("Amazon API Gateway", "API Gateway Requests", 3.5000, "1M requests"),
+            ("Amazon SQS", "SQS Requests", 0.4000, "1M requests"),
+            ("Amazon SNS", "SNS Notifications", 0.5000, "1M requests"),
+            ("AWS WAF", "WAF Web ACL", 5.0000, "ACL-month"),
+            ("AWS KMS", "KMS Key Usage", 1.0000, "key-month"),
+            ("AWS Secrets Manager", "Secrets Manager", 0.4000, "secret-month"),
         ]
         try:
             import boto3
@@ -248,6 +258,11 @@ class CloudMasterEngine:
             ("Cloud Pub/Sub", "Pub/Sub Message Ingestion", 0.0400, "GB"),
             ("BigQuery", "BigQuery Analysis", 5.0000, "TB"),
             ("Cloud Logging", "Log Ingestion", 0.5000, "GB"),
+            ("API Gateway", "API Gateway Requests", 3.0000, "1M requests"),
+            ("Cloud Tasks", "Task Queue Operations", 0.4000, "1M requests"),
+            ("Secret Manager", "Secret Versions", 0.0600, "10K operations"),
+            ("Cloud Armor", "Cloud Armor Policy", 5.0000, "policy-month"),
+            ("VPC Network", "Network Egress", 0.1200, "GB"),
         ]
 
         from app.core.config import settings
