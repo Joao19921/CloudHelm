@@ -5,6 +5,7 @@ class CatalogItemResponse(BaseModel):
     id: int
     provider: str
     service: str
+    service_type: str = "other"
     display_name: str
     region: str | None
     price: float

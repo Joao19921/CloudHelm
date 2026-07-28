@@ -222,45 +222,55 @@ function renderAIBrief(analysis) {
   `;
 }
 
+const serviceTypeLabels = {
+  compute: "Compute", database: "Database", cache: "Cache", storage: "Storage",
+  network: "Network", observability: "Observabilidade", security: "Seguranca",
+  ai_ml: "AI / ML", integration: "Integracao", other: "Outros",
+};
+
 function renderCatalog(list) {
   if (!list.length) {
-    catalogGridEl.innerHTML =
-      '<div class="rounded-xl border border-white/10 bg-slate-950/50 p-4 text-xs text-slate-300">Nenhum item encontrado. Sincronize o catalogo primeiro.</div>';
+    catalogGridEl.innerHTML = '<div class="rounded-xl border border-white/10 bg-slate-950/50 p-4 text-xs text-slate-300">Nenhum item encontrado. Sincronize o catalogo primeiro.</div>';
     return;
   }
-  catalogGridEl.innerHTML = list
-    .map(
-      (item) => `
-      <div class="rounded-xl border border-white/10 bg-slate-950/60 p-4">
-        <div class="flex items-start justify-between gap-3">
-          <img src="${iconUrl(item.icon)}" class="h-10 w-10 object-contain" onerror="this.src='./assets/icons/generic.svg'" />
-          <span class="rounded bg-white/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand-100">${item.provider}</span>
-        </div>
-        <p class="mt-3 text-sm font-semibold text-slate-100">${item.display_name}</p>
-        <p class="text-[11px] text-slate-400">${item.service}${item.region ? ` - ${item.region}` : ""}</p>
-        <p class="mt-3 text-lg font-bold text-brand-200">${item.currency} ${Number(item.price).toFixed(4)}</p>
-        <p class="text-[11px] text-slate-400">por ${item.unit} - fonte: ${item.source}</p>
-      </div>
-    `
-    )
-    .join("");
+  const grouped = {};
+  list.forEach((item) => {
+    const provider = item.provider?.toLowerCase() || "other";
+    const type = item.service_type || "other";
+    grouped[provider] ||= {};
+    grouped[provider][type] ||= [];
+    grouped[provider][type].push(item);
+  });
+  catalogGridEl.innerHTML = Object.entries(grouped).map(([provider, types]) => `
+    <section class="col-span-full rounded-2xl border border-brand-400/20 bg-slate-950/35 p-4">
+      <div class="mb-4 flex items-center justify-between gap-3"><h3 class="text-base font-bold uppercase tracking-wide text-brand-200">${provider}</h3><span class="text-[11px] text-slate-400">${Object.values(types).flat().length} servicos</span></div>
+      ${Object.entries(types).map(([type, items]) => `
+        <div class="mb-5 last:mb-0"><h4 class="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">${serviceTypeLabels[type] || type}</h4>
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            ${items.map((item) => `
+              <article class="rounded-xl border border-white/10 bg-slate-950/70 p-4 transition hover:-translate-y-0.5 hover:border-brand-300/40">
+                <div class="flex items-start justify-between gap-3"><img src="${iconUrl(item.icon)}" alt="${item.provider} ${item.service}" class="h-10 w-10 object-contain" onerror="this.onerror=null;this.src=iconUrl('/static/icons/generic.svg')" /><span class="rounded bg-white/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand-100">${item.provider}</span></div>
+                <p class="mt-3 text-sm font-semibold text-slate-100">${item.display_name}</p><p class="text-[11px] text-slate-400">${item.service}${item.region ? ` - ${item.region}` : ""}</p>
+                <p class="mt-3 text-lg font-bold text-brand-200">${item.currency} ${Number(item.price).toFixed(4)}</p><p class="text-[11px] text-slate-400">por ${item.unit} - fonte: ${item.source}</p>
+              </article>`).join("")}
+          </div>
+        </div>`).join("")}
+    </section>`).join("");
 }
 
 function applyCatalogFilter() {
   const provider = $("catalog-provider-filter").value;
+  const serviceType = $("catalog-service-type-filter").value;
   const search = $("catalog-search").value.trim().toLowerCase();
   const filtered = state.catalog.filter((item) => {
     const providerMatch = provider === "all" || item.provider === provider;
-    const searchMatch =
-      !search ||
-      item.display_name.toLowerCase().includes(search) ||
-      item.service.toLowerCase().includes(search);
-    return providerMatch && searchMatch;
+    const typeMatch = serviceType === "all" || (item.service_type || "other") === serviceType;
+    const searchMatch = !search || item.display_name.toLowerCase().includes(search) || item.service.toLowerCase().includes(search);
+    return providerMatch && typeMatch && searchMatch;
   });
   renderCatalog(filtered);
-  catalogMetaEl.textContent = `Itens exibidos: ${filtered.length} / ${state.catalog.length}`;
+  catalogMetaEl.textContent = `Itens exibidos: ${filtered.length} / ${state.catalog.length} · agrupados por cloud e tipo de servico`;
 }
-
 async function loadCatalog() {
   const provider = $("catalog-provider-filter").value;
   const search = $("catalog-search").value.trim();
@@ -393,6 +403,7 @@ $("logout-btn").addEventListener("click", logout);
 $("orchestrate-btn").addEventListener("click", orchestrate);
 $("catalog-sync-btn").addEventListener("click", syncCatalog);
 $("catalog-provider-filter").addEventListener("change", loadCatalog);
+$("catalog-service-type-filter").addEventListener("change", applyCatalogFilter);
 $("catalog-search").addEventListener("input", applyCatalogFilter);
 
 loadTokenFromUrlOrStorage();

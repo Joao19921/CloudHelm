@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
@@ -150,7 +150,22 @@
             <h2 class="text-lg font-semibold">Entrada da Demanda</h2>
             <p class="mt-1 text-sm text-slate-300">Envie descricao ou arquivo com os requisitos - a IA analisara tudo.</p>
             <div class="mt-4 space-y-3">
-              <input
+              <select
+                id="catalog-service-type-filter"
+                class="rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 text-sm outline-none focus:border-cyan-300/60"
+              >
+                <option value="all">Todos os tipos</option>
+                <option value="compute">Compute</option>
+                <option value="database">Database</option>
+                <option value="cache">Cache</option>
+                <option value="storage">Storage</option>
+                <option value="network">Network</option>
+                <option value="observability">Observabilidade</option>
+                <option value="security">Seguranca</option>
+                <option value="ai_ml">AI / ML</option>
+                <option value="integration">Integracao</option>
+                <option value="other">Outros</option>
+              </select>              <input
                 id="demand-title"
                 placeholder="Titulo da demanda"
                 class="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 outline-none focus:border-cyan-300/60"

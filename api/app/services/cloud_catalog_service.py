@@ -35,6 +35,24 @@ SERVICE_ICONS = {
     },
     "oci": {"default": "/static/icons/cloud/oci.svg"},
 }
+def get_service_type(service_name: str, provider: str = "") -> str:
+    """Normalize provider catalog records into UI-friendly service categories."""
+    text = f"{service_name} {provider}".lower()
+    categories = (
+        ("cache", ("cache", "redis", "elasticache", "memorystore")),
+        ("database", ("database", "rds", "sql", "postgres", "mysql", "oracle")),
+        ("storage", ("storage", "s3", "bucket", "object", "disk", "volume")),
+        ("observability", ("cloudwatch", "logging", "monitor", "log analytics", "audit")),
+        ("network", ("load balancer", "cdn", "cloudfront", "route 53", "network", "vcn", "vpc")),
+        ("security", ("security", "key vault", "vault", "iam", "identity", "firewall")),
+        ("ai_ml", ("vertex", "sagemaker", "machine learning", "ml", "ai")),
+        ("integration", ("pub/sub", "pubsub", "queue", "messaging", "event", "api gateway")),
+        ("compute", ("compute", "ec2", "virtual machine", "vm", "instance", "container", "kubernetes", "cloud run", "app service")),
+    )
+    for category, keywords in categories:
+        if any(keyword in text for keyword in keywords):
+            return category
+    return "other"
 
 
 class CloudMasterEngine:

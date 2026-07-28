@@ -6,7 +6,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.repositories.catalog_repository import list_catalog_items, providers_summary
 from app.schemas.catalog import CatalogItemResponse, CatalogSyncRequest, CatalogSyncResponse
-from app.services.cloud_catalog_service import CloudMasterEngine
+from app.services.cloud_catalog_service import CloudMasterEngine, get_service_type
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
 
@@ -50,6 +50,7 @@ def get_catalog_items(
             id=item.id,
             provider=item.provider,
             service=item.service,
+            service_type=get_service_type(item.service, item.provider),
             display_name=item.display_name,
             region=item.region,
             price=item.price,
