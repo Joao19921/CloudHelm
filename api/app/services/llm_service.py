@@ -22,11 +22,15 @@ class LLMService:
             "Requirements:\n"
             f"{raw_input}\n\n"
             f"Preferred cloud provider: {provider}.\n"
-            "Return in plain text with sections:\n"
-            "1) Application context and primary flows\n"
-            "2) Architectural foundation: components, responsibilities and dependencies\n"
-            "3) Infrastructure reference and next implementation steps\n"
-            "Keep under 220 words."
+            "Return in plain text with sections:\\n"
+            "1) Business context: problem, users, value and success signals\\n"
+            "2) Discovery gaps: assumptions, constraints and questions that block a decision\\n"
+            "3) Functional and non-functional requirements: scale, performance, availability, security, audit, backup, RTO/RPO and compliance\\n"
+            "4) Recommended architecture: style, boundaries, responsibilities and dependencies\\n"
+            "5) Alternatives and trade-offs: explain why not monolith, modular monolith, microservices, event-driven or serverless when relevant\\n"
+            "6) Infrastructure, security, DevOps, data and API decisions\\n"
+            "7) Delivery, cost, risks, operations and next steps\\n"
+            "Be explicit when information is missing. Keep under 420 words."
         )
 
     @staticmethod

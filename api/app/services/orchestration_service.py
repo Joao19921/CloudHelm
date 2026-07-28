@@ -114,7 +114,36 @@ def _build_product_artifacts(raw_input: str, provider: str, costs: dict[str, Any
         {"step": "Provisionar fundação", "description": "Criar rede, identidade, compute, dados, secrets e observabilidade mínima.", "owner": "Plataforma + DevOps"},
         {"step": "Validar operação", "description": "Executar testes de carga, falha, backup, segurança e custo.", "owner": "QA + SRE"},
     ]
-    return {"executive_summary": {"interpretation": raw_input[:500], "scale": scale, "objectives": objectives, "non_functional_requirements": non_functional, "provider_reference": provider.upper(), "confidence_note": "Base inicial para validação humana; decisões críticas dependem de requisitos confirmados."}, "service_decisions": decisions, "tradeoffs": tradeoffs, "risks": risks, "implementation_plan": plan, "cost_scope": list((costs.get("monthly_estimate") or {}).keys())}
+    discovery = {
+        "business_questions": ["Qual problema e impacto financeiro estamos tratando?", "Quem usa, decide e opera a solução?", "Quais indicadores definem sucesso?", "Qual prazo, orçamento e custo de falha?"],
+        "identified_signals": ["Contexto técnico informado" if any(term in normalized for term in ("api", "aplicacao", "aplicação", "sistema")) else "Contexto técnico ainda incompleto", "Escala " + scale, "Cloud de referência " + provider.upper()],
+        "gaps": ["Objetivos de negócio e KPIs", "Orçamento e prazo aprovados", "Atores, integrações e regras de negócio", "SLA, RTO, RPO e requisitos de compliance"],
+        "assumptions": ["A solução começa com uma base evolutiva e decisões revisáveis.", "Valores de custo são referências de planejamento, não proposta comercial."]
+    }
+    architecture_options = [
+        {"name": "Monólito modular + Clean/Hexagonal", "fit": "Recomendação inicial", "benefit": "Entrega rápida, baixo custo e fronteiras claras para evoluir.", "tradeoff": "Módulos ainda compartilham ciclo de deploy e runtime."},
+        {"name": "Microsserviços", "fit": "Usar com evidência", "benefit": "Escala e autonomia por domínio.", "tradeoff": "Aumenta observabilidade, operação, testes distribuídos e custo."},
+        {"name": "Event-driven / Serverless", "fit": "Para fluxos assíncronos", "benefit": "Desacoplamento e escala sob demanda.", "tradeoff": "Consistência, rastreabilidade e debugging ficam mais complexos."}
+    ]
+    security = [
+        {"area": "Identidade", "baseline": "OAuth/OIDC, JWT de curta duração, RBAC e MFA para operações sensíveis."},
+        {"area": "Proteção", "baseline": "TLS, criptografia em repouso, gestão de secrets, WAF e rate limit."},
+        {"area": "Governança", "baseline": "Logs de auditoria, OWASP, retenção definida e revisão de acesso."}
+    ]
+    platform = {
+        "devops": ["CI com lint, testes, análise de dependências e segurança", "CD por ambientes: desenvolvimento, homologação e produção", "Deploy canário ou blue-green quando o risco justificar", "Rollback automatizado e IaC versionada"],
+        "observability": ["Métricas de negócio e técnicas", "Logs estruturados e correlação por request-id", "Tracing distribuído com OpenTelemetry", "SLO, alertas acionáveis e runbooks"],
+        "data": ["Modelo de dados e relacionamentos validados no domínio", "Índices e estratégia de crescimento definidos por volume", "Backup testado, retenção e restauração", "Particionamento somente quando a carga justificar"],
+        "apis": ["REST como padrão inicial; gRPC para comunicação interna de alto volume", "Versionamento de contratos e documentação OpenAPI", "Webhooks e eventos para integrações assíncronas", "Autenticação, idempotência e rate limit por contrato"]
+    }
+    delivery = {
+        "team": [{"role": "Produto + Negócio", "count": "1-2", "phase": "descoberta e priorização"}, {"role": "Arquitetura + Tech Lead", "count": "1-2", "phase": "fundação e decisões"}, {"role": "Backend + Frontend", "count": "2-5", "phase": "MVP e evolução"}, {"role": "QA + DevOps/SRE", "count": "1-2", "phase": "qualidade, deploy e operação"}],
+        "timeline": ["Descoberta e requisitos", "Fundação arquitetural", "MVP com critérios de aceite", "Homologação e produção", "Evolução orientada por métricas"],
+        "cost_note": "Sem prazo, equipe e volume confirmados, apresentar faixas e atualizar após a descoberta."
+    }
+    support = ["Definir SLA e SLO por jornada crítica", "Operar incidentes com severidade, comunicação e postmortem", "Manter plano de capacidade e custos", "Reservar ciclo para dívida técnica e atualizações", "Revisar riscos e arquitetura a cada evolução"]
+    extended = {"discovery": discovery, "architecture_options": architecture_options, "security_baseline": security, "platform_blueprint": platform, "delivery_estimate": delivery, "support_model": support, "next_steps": ["Responder as lacunas de descoberta", "Validar a alternativa arquitetural com produto e engenharia", "Detalhar contratos, dados e integrações", "Transformar a base validada em backlog e ADRs"], "engineering_principles": ["Simplicidade antes de complexidade", "Baixo acoplamento e alta coesão", "Segurança e observabilidade desde o início", "Escalar por evidência", "Custo, prazo e qualidade como decisões conjuntas"]}
+    return {**extended, "executive_summary": {"interpretation": raw_input[:500], "scale": scale, "objectives": objectives, "non_functional_requirements": non_functional, "provider_reference": provider.upper(), "confidence_note": "Base inicial para validação humana; decisões críticas dependem de requisitos confirmados."}, "service_decisions": decisions, "tradeoffs": tradeoffs, "risks": risks, "implementation_plan": plan, "cost_scope": list((costs.get("monthly_estimate") or {}).keys())}
 
 def _monthly_cost_midpoint(cost_range: dict[str, float]) -> float:
     return float(cost_range["min"] + cost_range["max"]) / 2.0
