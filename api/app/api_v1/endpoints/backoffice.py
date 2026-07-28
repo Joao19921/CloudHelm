@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -7,10 +8,12 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import get_admin_user
 from app.db.session import get_db
+from app.models.application_log import ApplicationLog
 from app.models.user import User
 from app.repositories.app_settings_repository import get_llm_runtime_config, set_llm_runtime_config
 from app.repositories.user_repository import get_user_by_id, list_users, update_user_approval
 from app.schemas.backoffice import BackofficeUserItem, LLMConfigPayload, LLMConfigResponse
+from app.services.application_log_service import ApplicationLogService
 from app.services.audit_service import AuditService
 from app.services.email_service import get_email_service
 
@@ -336,6 +339,25 @@ def get_audit_logs(
         for log in logs
     ]
 
+
+@router.get("/application-logs")
+def application_logs(limit: int = 100, db: Session = Depends(get_db), _admin: User = Depends(get_admin_user)):
+    limit = max(1, min(limit, 500))
+    return [
+        {
+            "id": item.id,
+            "user_id": item.user_id,
+            "demand_id": item.demand_id,
+            "event_name": item.event_name,
+            "event_category": item.event_category,
+            "event_status": item.event_status,
+            "route": item.route,
+            "duration_ms": item.duration_ms,
+            "metadata": json.loads(item.metadata_json or "{}"),
+            "created_at": item.created_at,
+        }
+        for item in ApplicationLogService.recent(db, limit)
+    ]
 
 @router.get("/llm-config", response_model=LLMConfigResponse)
 def read_llm_config(

@@ -10,7 +10,7 @@ from sqlalchemy.exc import OperationalError
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
-from app.models import AppSetting, CloudCatalogItem, Demand, User  # noqa: F401
+from app.models import AppSetting, ApplicationLog, CloudCatalogItem, Demand, User  # noqa: F401
 from app.api_v1.endpoints import ui
 from app.api_v1.router import api_router
 

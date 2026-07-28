@@ -1,6 +1,7 @@
 import json
+import time
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
@@ -23,6 +24,7 @@ from app.schemas.demand import (
     OrchestrateRequest,
 
 )
+from app.services.application_log_service import ApplicationLogService
 from app.services.orchestration_service import orchestrate_demand
 from app.services.terraform_service import build_terraform_modules
 
@@ -53,6 +55,7 @@ def terraform_provider(provider: str):
 @router.post("/demands", response_model=DemandResponse, status_code=status.HTTP_201_CREATED)
 def create_demand_api(
     payload: DemandCreateRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -66,11 +69,12 @@ def create_demand_api(
         raw_input=payload.raw_input,
         input_type=payload.input_type,
     )
+    ApplicationLogService.record(db, event_name="base_created", event_category="execution", demand_id=demand.id, user_id=current_user.id, route="POST /api/demands", metadata={"input_type": demand.input_type}, ip_address=request.client.host if request and request.client else None, user_agent=request.headers.get("user-agent") if request else None)
     return DemandResponse(
         id=demand.id,
         title=demand.title,
         input_type=demand.input_type,
-        raw_input=demand.raw_input,
+            raw_input=demand.raw_input,
         provider_selected=demand.provider_selected,
         status=demand.status,
         created_at=demand.created_at,
@@ -104,12 +108,14 @@ def list_demands_api(
 @router.get("/demands/{demand_id}/analysis", response_model=DemandAnalysisResponse)
 def get_demand_analysis_api(
     demand_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     demand = get_demand_by_id(db, demand_id=demand_id, owner_id=current_user.id)
     if not demand:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Base arquitetural não encontrada.")
+    ApplicationLogService.record(db, event_name="base_opened", event_category="interaction", demand_id=demand.id, user_id=current_user.id, route="GET /api/demands/{demand_id}/analysis", metadata={"has_analysis": bool(demand.analysis_json or demand.architecture_json)}, ip_address=request.client.host if request.client else None, user_agent=request.headers.get("user-agent"))
     if demand.analysis_json:
         payload = json.loads(demand.analysis_json)
     elif demand.architecture_json:
@@ -135,12 +141,14 @@ def delete_demand_api(
     demand = get_demand_by_id(db, demand_id=demand_id, owner_id=current_user.id)
     if not demand:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Base arquitetural não encontrada.")
+    ApplicationLogService.record(db, event_name="base_deleted", event_category="interaction", demand_id=demand.id, user_id=current_user.id, route="DELETE /api/demands/{demand_id}")
     delete_demand(db, demand)
 
 @router.post("/demands/{demand_id}/orchestrate", response_model=DemandAnalysisResponse)
 def orchestrate_demand_api(
     demand_id: int,
     payload: OrchestrateRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -156,15 +164,22 @@ def orchestrate_demand_api(
     elif llm_provider == "gemini":
         llm_api_key = llm_config.get("gemini_api_key", "")
 
-    result = orchestrate_demand(
-        raw_input=demand.raw_input,
-        provider=payload.provider,
-        catalog_summary=providers_summary(db),
-        catalog_items=list_catalog_items(db=db, provider="all", search="", limit=500),
-        llm_provider=llm_provider,
-        llm_api_key=llm_api_key,
-        llm_model=llm_config.get("model") or None,
-    )
+    started_at = time.perf_counter()
+    ApplicationLogService.record(db, event_name="architecture_build_started", event_category="execution", event_status="started", demand_id=demand.id, user_id=current_user.id, route="POST /api/demands/{demand_id}/orchestrate", metadata={"provider": payload.provider}, ip_address=request.client.host if request.client else None, user_agent=request.headers.get("user-agent"))
+
+    try:
+        result = orchestrate_demand(
+            raw_input=demand.raw_input,
+            provider=payload.provider,
+            catalog_summary=providers_summary(db),
+            catalog_items=list_catalog_items(db=db, provider="all", search="", limit=500),
+            llm_provider=llm_provider,
+            llm_api_key=llm_api_key,
+            llm_model=llm_config.get("model") or None,
+        )
+    except Exception:
+        ApplicationLogService.record(db, event_name="architecture_build_failed", event_category="execution", event_status="failed", demand_id=demand.id, user_id=current_user.id, route="POST /api/demands/{demand_id}/orchestrate", duration_ms=int((time.perf_counter() - started_at) * 1000), metadata={"provider": payload.provider}, ip_address=request.client.host if request.client else None, user_agent=request.headers.get("user-agent"))
+        raise
     save_orchestration_result(
         db=db,
         demand=demand,
@@ -174,6 +189,7 @@ def orchestrate_demand_api(
         terraform_json=json.dumps(result["terraform"]),
         analysis_json=json.dumps(result),
     )
+
     return DemandAnalysisResponse(demand_id=demand.id, **result)
 
 
