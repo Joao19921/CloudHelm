@@ -41,13 +41,13 @@ def get_service_type(service_name: str, provider: str = "") -> str:
     categories = (
         ("cache", ("cache", "redis", "elasticache", "memorystore")),
         ("database", ("database", "rds", "sql", "postgres", "mysql", "oracle")),
-        ("storage", ("storage", "s3", "bucket", "object", "disk", "volume")),
-        ("observability", ("cloudwatch", "logging", "monitor", "log analytics", "audit")),
+        ("storage", ("storage", "s3", "bucket", "object", "disk", "volume", "ebs", "block volume", "file storage")),
+        ("observability", ("cloudwatch", "logging", "monitor", "log analytics", "audit", "x-ray", "tracing")),
         ("network", ("load balancer", "cdn", "cloudfront", "route 53", "network", "vcn", "vpc")),
-        ("security", ("security", "key vault", "vault", "iam", "identity", "firewall")),
+        ("security", ("security", "key vault", "vault", "iam", "identity", "firewall", "waf", "kms", "secret", "shield", "armor")),
         ("ai_ml", ("vertex", "sagemaker", "machine learning", "ml", "ai")),
-        ("integration", ("pub/sub", "pubsub", "queue", "messaging", "event", "api gateway")),
-        ("compute", ("compute", "ec2", "virtual machine", "vm", "instance", "container", "kubernetes", "cloud run", "app service")),
+        ("integration", ("pub/sub", "pubsub", "sqs", "sns", "queue", "messaging", "event", "api gateway", "api management", "streaming", "tasks")),
+        ("compute", ("compute", "ec2", "ecs", "eks", "lambda", "fargate", "virtual machine", "vm", "instance", "container", "kubernetes", "cloud run", "app service", "functions")),
     )
     for category, keywords in categories:
         if any(keyword in text for keyword in keywords):
@@ -98,6 +98,33 @@ class CloudMasterEngine:
             if any(term in normalized for term in terms) and category in icon_set:
                 return icon_set[category]
         return icon_set.get("default", "/static/icons/generic.svg")
+
+    def _merge_seeded_items(self, provider: str, items: list[dict], seeded: list[tuple], limit: int, region: str) -> list[dict]:
+        """Keep provider API prices and fill the catalog with reference services."""
+        combined = list(items)
+        known = {(item.get("service"), item.get("display_name")) for item in combined}
+        for record in seeded:
+            service, name, price, unit = record[:4]
+            if (service, name) in known:
+                continue
+            combined.append(
+                {
+                    "provider": provider,
+                    "service": service,
+                    "display_name": name,
+                    "region": region,
+                    "price": float(price),
+                    "currency": "USD",
+                    "unit": unit,
+                    "icon": self.get_smart_icon(service, provider),
+                    "source": "seeded-baseline",
+                }
+            )
+            known.add((service, name))
+            if len(combined) >= limit:
+                break
+        return combined[:limit]
+
     def fetch_azure_data(self, limit: int = 20) -> list[dict]:
         filters = "serviceName eq 'Virtual Machines' or serviceName eq 'SQL Database'"
         url = "https://prices.azure.com/api/retail/prices"
@@ -225,7 +252,7 @@ class CloudMasterEngine:
                 if len(items) >= limit:
                     break
             if items and len({get_service_type(item.get("service", ""), "aws") for item in items}) >= 3:
-                return items
+                return self._merge_seeded_items("aws", items, seeded, limit, "us-east-1")
         except Exception:
             pass
 
@@ -325,7 +352,7 @@ class CloudMasterEngine:
                         if len(items) >= limit:
                             break
                     if items and len({get_service_type(item.get("service", ""), "gcp") for item in items}) >= 3:
-                        return items
+                        return self._merge_seeded_items("gcp", items, seeded, limit, "us-central1")
             except Exception:
                 pass
 
