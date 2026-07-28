@@ -18,14 +18,14 @@ class LLMService:
     def _build_prompt(raw_input: str, provider: str) -> str:
         return (
             "You are a principal cloud architect. "
-            "Generate a concise implementation brief for CloudHelm.\n"
+            "Generate a concise architectural foundation brief for CloudHelm.\n"
             "Requirements:\n"
             f"{raw_input}\n\n"
             f"Preferred cloud provider: {provider}.\n"
             "Return in plain text with sections:\n"
-            "1) Architecture summary\n"
-            "2) HA notes for RTO/RPO 15 minutes\n"
-            "3) Recommended first sprint tasks\n"
+            "1) Application context and primary flows\n"
+            "2) Architectural foundation: components, responsibilities and dependencies\n"
+            "3) Infrastructure reference and next implementation steps\n"
             "Keep under 220 words."
         )
 
@@ -34,7 +34,7 @@ class LLMService:
         return LLMResult(
             provider=provider,
             model=model,
-            content=f"{provider.title()} unavailable. Using deterministic fallback architecture. Reason: {reason}",
+            content=f"{provider.title()} unavailable. Using deterministic fallback for the architectural foundation. Reason: {reason}",
             used_fallback=True,
         )
 
@@ -101,7 +101,7 @@ class LLMService:
                 return LLMResult(
                     provider="openai",
                     model=model,
-                    content="OpenAI API key missing. Using deterministic fallback architecture.",
+                    content="OpenAI API key missing. Using deterministic fallback for the architectural foundation.",
                     used_fallback=True,
                 )
             try:
@@ -119,7 +119,7 @@ class LLMService:
                 return LLMResult(
                     provider="gemini",
                     model=model,
-                    content="Gemini API key missing. Using deterministic fallback architecture.",
+                    content="Gemini API key missing. Using deterministic fallback for the architectural foundation.",
                     used_fallback=True,
                 )
             try:
@@ -133,6 +133,6 @@ class LLMService:
         return LLMResult(
             provider="none",
             model="deterministic",
-            content="Deterministic mode active (no LLM key selected).",
+            content="Deterministic fallback mode active for the architectural foundation (no LLM key selected).",
             used_fallback=True,
         )

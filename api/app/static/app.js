@@ -1,4 +1,4 @@
-﻿const AUTH_TOKEN_KEY = "cloudhelm.auth.token";
+const AUTH_TOKEN_KEY = "cloudhelm.auth.token";
 const config = window.CLOUDHELM_CONFIG || {};
 const API_BASE_URL = (config.API_BASE_URL || "").replace(/\/$/, "");
 
@@ -180,7 +180,7 @@ function renderRanking(analysis) {
   rankingEl.innerHTML = `
     <div class="rounded-xl border border-brand-400/30 bg-brand-950/20 p-3">
       <p class="text-sm font-semibold text-brand-200">Ranking Inteligente de Provider</p>
-      <p class="mt-1 text-[11px] text-slate-300">Recomendado: <span class="font-semibold text-emerald-300">${ranking.recommended_provider?.toUpperCase() || "-"}</span></p>
+      <p class="mt-1 text-[11px] text-slate-300">Provider de referencia: <span class="font-semibold text-emerald-300">${ranking.recommended_provider?.toUpperCase() || "-"}</span></p>
       <div class="mt-3 space-y-2">
         ${items
           .map(
