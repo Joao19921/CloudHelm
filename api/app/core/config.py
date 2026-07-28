@@ -1,4 +1,4 @@
-﻿from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     gcp_billing_api_key: str | None = None
     openai_chat_model: str = "gpt-4o-mini"
-    gemini_model: str = "gemini-1.5-flash"
+    gemini_model: str = "gemini-2.5-flash"
     github_client_id: str | None = None
     github_client_secret: str | None = None
     github_redirect_uri: str

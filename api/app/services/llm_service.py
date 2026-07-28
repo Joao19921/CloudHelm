@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -43,10 +44,11 @@ class LLMService:
 
     @staticmethod
     def _fallback(provider: str, model: str, reason: str) -> LLMResult:
+        safe_reason = re.sub(r"([?&]key=)[^&\s]+", r"\1[redacted]", reason)
         return LLMResult(
             provider=provider,
             model=model,
-            content=f"{provider.title()} unavailable. Using deterministic fallback for the architectural foundation. Reason: {reason}",
+            content=f"{provider.title()} unavailable. Using deterministic fallback for the architectural foundation. Reason: {safe_reason}",
             used_fallback=True,
         )
 
@@ -68,28 +70,41 @@ class LLMService:
 
     @staticmethod
     def _call_gemini(prompt: str, api_key: str, model: str) -> str:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        requested_model = (model or "gemini-2.5-flash").strip().removeprefix("models/")
         payload = {
-            "contents": [
-                {
-                    "parts": [{"text": prompt}],
-                }
-            ],
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": 0.2},
         }
-        try:
-            response = requests.post(url, json=payload, timeout=30)
-            response.raise_for_status()
+        models_to_try = [requested_model]
+        if requested_model in {"gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro"}:
+            models_to_try.append("gemini-2.5-flash")
+        last_error = "unknown error"
+        for candidate_model in dict.fromkeys(models_to_try):
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{candidate_model}:generateContent"
+            try:
+                response = requests.post(url, headers={"x-goog-api-key": api_key, "Content-Type": "application/json"}, json=payload, timeout=45)
+            except requests.RequestException:
+                last_error = "network error while calling Gemini"
+                continue
+            if response.status_code == 404:
+                last_error = f"model {candidate_model} was not found"
+                continue
+            if not response.ok:
+                try:
+                    error_message = response.json().get("error", {}).get("message", "request rejected")
+                except ValueError:
+                    error_message = "request rejected"
+                raise RuntimeError(f"Gemini returned HTTP {response.status_code}: {error_message[:240]}")
             data = response.json()
-        except requests.RequestException as exc:
-            raise RuntimeError(f"Gemini request failed: {exc}") from exc
-
-        candidates = data.get("candidates", [])
-        if not candidates:
-            raise RuntimeError("Gemini returned no candidates.")
-        parts = candidates[0].get("content", {}).get("parts", [])
-        text = "\n".join(part.get("text", "") for part in parts if part.get("text"))
-        return text.strip()
+            candidates = data.get("candidates", [])
+            if not candidates:
+                raise RuntimeError("Gemini returned no candidates.")
+            parts = candidates[0].get("content", {}).get("parts", [])
+            text = "\n".join(part.get("text", "") for part in parts if part.get("text"))
+            if text.strip():
+                return text.strip()
+            raise RuntimeError("Gemini returned an empty response.")
+        raise RuntimeError(f"Gemini model unavailable: {last_error}")
 
     @classmethod
     def generate_brief(
