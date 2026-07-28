@@ -24,3 +24,5 @@ api/dist_cloud_data/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+frontend-react/dist/
