@@ -1,6 +1,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.models.application_log import ApplicationLog
 from app.models.demand import Demand
 
 
@@ -62,5 +63,6 @@ def save_orchestration_result(
 
 
 def delete_demand(db: Session, demand: Demand) -> None:
+    db.query(ApplicationLog).filter(ApplicationLog.demand_id == demand.id).update({ApplicationLog.demand_id: None}, synchronize_session=False)
     db.delete(demand)
     db.commit()

@@ -142,8 +142,12 @@ def delete_demand_api(
     demand = get_demand_by_id(db, demand_id=demand_id, owner_id=current_user.id)
     if not demand:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Base arquitetural não encontrada.")
-    ApplicationLogService.record(db, event_name="base_deleted", event_category="interaction", demand_id=demand.id, user_id=current_user.id, route="DELETE /api/demands/{demand_id}")
+    deleted_demand_id = demand.id
     delete_demand(db, demand)
+    try:
+        ApplicationLogService.record(db, event_name="base_deleted", event_category="interaction", user_id=current_user.id, route="DELETE /api/demands/{demand_id}", metadata={"demand_id": deleted_demand_id})
+    except Exception:
+        pass
 
 @router.post("/demands/{demand_id}/orchestrate", response_model=DemandAnalysisResponse)
 def orchestrate_demand_api(
