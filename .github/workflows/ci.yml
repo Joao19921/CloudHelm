@@ -30,6 +30,7 @@ jobs:
       GEMINI_MODEL: gemini-1.5-flash
       TRANSCRIBE_MODEL: whisper-1
       GCP_BILLING_API_KEY: ""
+      PYTHONPATH: ${{ github.workspace }}/api
     defaults:
       run:
         working-directory: api
