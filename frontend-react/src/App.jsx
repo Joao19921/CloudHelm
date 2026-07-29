@@ -265,7 +265,18 @@ function SavedBases({ bases, onOpen, onDelete, busy }) {
                   {base.provider_selected?.toUpperCase() || "RASCUNHO"}
                 </span>
               </div>
-              <p className="mt-4 text-sm leading-6 text-slate-300">{base.raw_input}</p>
+              <p
+                className="mt-4 text-sm leading-6 text-slate-300"
+                style={{
+                  display: "-webkit-box",
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {base.raw_input}
+              </p>
               <div className="mt-5 flex flex-col gap-3 sm:flex-row">
                 <button
                   type="button"
