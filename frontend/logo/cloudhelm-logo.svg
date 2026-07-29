@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="96" viewBox="0 0 360 96" fill="none">
+  <defs>
+    <linearGradient id="helmGrad" x1="8" y1="8" x2="88" y2="88" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#23D5DE"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="88" height="88" rx="22" fill="#071326"/>
+  <rect x="4" y="4" width="88" height="88" rx="22" stroke="#16355C" stroke-width="2"/>
+  <path d="M20 58C20 46.9543 28.9543 38 40 38H56C67.0457 38 76 46.9543 76 58V60H20V58Z" fill="url(#helmGrad)"/>
+  <path d="M34 34C34 27.3726 39.3726 22 46 22H50C56.6274 22 62 27.3726 62 34V39H34V34Z" fill="#B0E1FF"/>
+  <path d="M44 60V72" stroke="#23D5DE" stroke-width="4" stroke-linecap="round"/>
+  <path d="M52 60V72" stroke="#0A84FF" stroke-width="4" stroke-linecap="round"/>
+  <text x="108" y="45" fill="#E7F3FF" font-size="34" font-family="Segoe UI, Arial, sans-serif" font-weight="700">CloudHelm</text>
+  <text x="109" y="66" fill="#84B7E5" font-size="13" font-family="Segoe UI, Arial, sans-serif" letter-spacing="1">AI CLOUD ORCHESTRATION</text>
+</svg>
