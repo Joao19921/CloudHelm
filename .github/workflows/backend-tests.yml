@@ -31,6 +31,7 @@ jobs:
       GITHUB_ADMIN_LOGINS: ci-admin
       GITHUB_CLIENT_ID: ci-client-id
       GITHUB_CLIENT_SECRET: ci-client-secret
+      PYTHONPATH: ${{ github.workspace }}/api
     defaults:
       run:
         working-directory: api
