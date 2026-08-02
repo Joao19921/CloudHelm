@@ -27,6 +27,14 @@
         },
       };
     </script>
+    <style>
+      .line-clamp-4 {
+        display: -webkit-box;
+        -webkit-line-clamp: 4;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+    </style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -80,7 +88,7 @@
             Projete, Estime e Provisione sua Infraestrutura Cloud em Segundos com IA.
           </h2>
           <p class="mt-5 max-w-2xl text-lg leading-relaxed text-slate-300">
-            O CloudHelm transforma os requisitos do seu negocio em arquiteturas multi-cloud otimizadas e codigo Terraform pronto para producao. Elimine o trabalho manual e compare custos entre AWS, Google Cloud e Azure instantaneamente.
+            O CloudHelm transforma os requisitos do seu negocio em arquiteturas multi-cloud otimizadas e codigo Terraform pronto para producao. Elimine o trabalho manual e compare custos entre AWS, Google Cloud, Azure e OCI instantaneamente.
           </p>
           <div class="mt-8 flex flex-wrap gap-3">
             <a
@@ -123,12 +131,13 @@ $ terraform generate --modular</pre>
       </section>
 
       <section class="mt-12 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
-        <p class="text-center text-xs uppercase tracking-[0.2em] text-slate-400">Nativamente integrado aos lideres de mercado</p>
-        <div class="mt-4 flex flex-wrap items-center justify-center gap-6 text-sm font-semibold text-slate-300">
-          <span>AWS</span>
-          <span>Google Cloud</span>
-          <span>Microsoft Azure</span>
-          <span>HashiCorp Terraform</span>
+        <p class="text-center text-xs uppercase tracking-[0.2em] text-slate-400">Nativamente integrado aos líderes de mercado</p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5 text-center text-sm font-semibold text-slate-200">
+          <span class="rounded-full border border-white/10 bg-slate-950/70 px-3 py-2">AWS</span>
+          <span class="rounded-full border border-white/10 bg-slate-950/70 px-3 py-2">Google Cloud</span>
+          <span class="rounded-full border border-white/10 bg-slate-950/70 px-3 py-2">Microsoft Azure</span>
+          <span class="rounded-full border border-white/10 bg-slate-950/70 px-3 py-2">Oracle Cloud (OCI)</span>
+          <span class="rounded-full border border-white/10 bg-slate-950/70 px-3 py-2">Terraform</span>
         </div>
       </section>
 
@@ -146,7 +155,7 @@ $ terraform generate --modular</pre>
           <article class="group rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-cyan-300/60 hover:shadow-glow">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Previsibilidade de custos</p>
             <h4 class="mt-2 text-xl font-bold">Previsibilidade Absoluta de Custos</h4>
-            <p class="mt-3 text-sm leading-relaxed text-slate-300">Compare o preco real da sua infraestrutura na AWS, GCP e Azure na mesma tela antes de investir um unico centavo.</p>
+            <p class="mt-3 text-sm leading-relaxed text-slate-300">Compare o preco real da sua infraestrutura na AWS, GCP, Azure e OCI na mesma tela antes de investir um unico centavo.</p>
           </article>
           <article class="group rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-cyan-300/60 hover:shadow-glow">
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">IaC pronto para deploy</p>
@@ -214,6 +223,7 @@ $ terraform generate --modular</pre>
               <option value="aws">AWS</option>
               <option value="gcp">GCP</option>
               <option value="azure">Azure</option>
+              <option value="oci">OCI</option>
               <option value="auto">Auto (Ranking)</option>
             </select>
             <p class="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-300/10 p-3 text-xs text-slate-200">
@@ -249,8 +259,8 @@ $ terraform generate --modular</pre>
         <section class="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
           <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 class="text-lg font-semibold">Catalogo Cloud Providers</h2>
-              <p class="mt-1 text-sm text-slate-300">Sincronize e pesquise servicos para apoiar comparacao de provedores.</p>
+              <h2 class="text-lg font-semibold">Catálogo de Serviços Multi-Cloud</h2>
+              <p class="mt-1 text-sm text-slate-300">Sincronize ofertas, compare serviços e escolha o melhor provedor para sua arquitetura.</p>
             </div>
             <div class="flex flex-col gap-2 sm:flex-row">
               <select
@@ -261,6 +271,7 @@ $ terraform generate --modular</pre>
                 <option value="aws">AWS</option>
                 <option value="gcp">GCP</option>
                 <option value="azure">Azure</option>
+                <option value="oci">OCI</option>
               </select>
               <input
                 id="catalog-search"
@@ -271,7 +282,7 @@ $ terraform generate --modular</pre>
                 id="catalog-sync-btn"
                 class="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
               >
-                Sincronizar Catalogo
+                Atualizar Catálogo
               </button>
             </div>
           </div>

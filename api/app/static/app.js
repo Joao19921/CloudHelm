@@ -28,10 +28,9 @@ function authHeaders() {
   if (!state.token) return { "Content-Type": "application/json" };
   return {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${state.token}`,
+    Authorization: `Bearer ${state.token}`
   };
 }
-
 function saveToken(token) {
   state.token = token;
   if (token) {
@@ -197,7 +196,7 @@ function renderAIBrief(analysis) {
       <p class="mt-1 text-[11px] text-slate-300">
         Processamento: <span class="${badgeClass} font-semibold">${providerLabel}</span>
       </p>
-      <p class="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-200">${ai.brief}</p>
+      <p class="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-200 line-clamp-4">${ai.brief}</p>
     </div>
   `;
 }
@@ -263,7 +262,7 @@ async function syncCatalog() {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({
-      providers: ["aws", "gcp", "azure"],
+      providers: ["aws", "gcp", "azure", "oci"],
       limit_per_provider: 25,
     }),
   });
@@ -418,3 +417,5 @@ $("catalog-search").addEventListener("input", applyCatalogFilter);
 loadTokenFromUrlOrStorage();
 refreshSession();
 loadCatalog();
+
+
