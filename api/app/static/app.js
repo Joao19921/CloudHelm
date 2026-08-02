@@ -134,7 +134,7 @@ function renderCosts(analysis) {
             const cls = isSelected ? "text-brand-200 font-semibold" : "text-slate-300";
             const total = Number(values.total ?? ((Number(values.min) + Number(values.max)) / 2));
             const components = (providerDetails.components || []).slice(0, 4);
-            const fallback = providerDetails.used_fallback ? "com fallback" : "catalogo oficial";
+            const fallback = providerDetails.used_fallback ? "com fallback" : "catálogo oficial";
             return `
               <div class="rounded-lg border border-white/10 bg-slate-950/40 p-2">
                 <p class="text-xs ${cls}">${provider.toUpperCase()}: USD ${total.toFixed(2)} <span class="text-slate-400">(${Number(values.min).toFixed(2)} - ${Number(values.max).toFixed(2)})</span></p>
@@ -203,7 +203,7 @@ function renderAIBrief(analysis) {
     aiBriefEl.innerHTML = "";
     return;
   }
-  const providerLabel = ai.provider === "none" ? "Padrao" : "Avancado";
+  const providerLabel = ai.provider === "none" ? "Padrão" : "Avançado";
   const badgeClass = ai.used_fallback ? "text-amber-300" : "text-emerald-300";
   aiBriefEl.innerHTML = `
     <div class="rounded-xl border border-white/10 bg-slate-950/55 p-3">
@@ -216,10 +216,21 @@ function renderAIBrief(analysis) {
   `;
 }
 
+function getProviderFallbackIcon(provider) {
+  const key = (provider || "").toLowerCase();
+  const fallbackIcons = {
+    aws: "/static/icons/cloud/aws-logo.svg",
+    gcp: "/static/icons/cloud/gcp-logo.svg",
+    azure: "/static/icons/cloud/azure-logo.svg",
+    oci: "/static/icons/cloud/oci.svg",
+  };
+  return fallbackIcons[key] || "/static/icons/generic.svg";
+}
+
 function renderCatalog(list) {
   if (!list.length) {
     catalogGridEl.innerHTML =
-      '<div class="rounded-xl border border-white/10 bg-slate-950/50 p-4 text-xs text-slate-300">Nenhum item encontrado. Sincronize o catalogo primeiro.</div>';
+      '<div class="rounded-xl border border-white/10 bg-slate-950/50 p-4 text-xs text-slate-300">Nenhum item encontrado. Sincronize o catálogo primeiro.</div>';
     return;
   }
   catalogGridEl.innerHTML = list
@@ -227,7 +238,7 @@ function renderCatalog(list) {
       (item) => `
       <div class="rounded-xl border border-white/10 bg-slate-950/60 p-4">
         <div class="flex items-start justify-between gap-3">
-          <img src="${item.icon}" class="h-10 w-10 object-contain" onerror="this.src='./assets/icons/generic.svg'" />
+          <img src="${item.icon || getProviderFallbackIcon(item.provider)}" class="h-10 w-10 object-contain" onerror="this.onerror=null;this.src='${getProviderFallbackIcon(item.provider)}'" />
           <span class="rounded bg-white/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand-100">${item.provider}</span>
         </div>
         <p class="mt-3 text-sm font-semibold text-slate-100">${item.display_name}</p>
@@ -260,7 +271,7 @@ async function loadCatalog() {
   const search = $("catalog-search").value.trim();
   const res = await fetch(apiUrl(`/api/catalog/items?provider=${provider}&search=${encodeURIComponent(search)}&limit=300`));
   if (!res.ok) {
-    catalogMetaEl.textContent = "Falha ao carregar catalogo.";
+    catalogMetaEl.textContent = "Falha ao carregar catálogo.";
     return;
   }
   state.catalog = await res.json();
@@ -269,10 +280,10 @@ async function loadCatalog() {
 
 async function syncCatalog() {
   if (!state.token) {
-    setStatus("Faca login com GitHub para sincronizar o catalogo.", true);
+    setStatus("Faça login com GitHub para sincronizar o catálogo.", true);
     return;
   }
-  setStatus("Sincronizando catalogo cloud...");
+  setStatus("Sincronizando catálogo cloud...");
   const res = await fetch(apiUrl("/api/catalog/sync"), {
     method: "POST",
     headers: authHeaders(),
@@ -282,14 +293,14 @@ async function syncCatalog() {
     }),
   });
   if (!res.ok) {
-    setStatus("Falha na sincronizacao do catalogo.", true);
+    setStatus("Falha na sincronização do catálogo.", true);
     return;
   }
   const data = await res.json();
   const syncedProviders = Object.entries(data.synced)
     .map(([provider, total]) => `${provider.toUpperCase()}: ${total}`)
     .join(" | ");
-  setStatus(`Catalogo sincronizado. ${syncedProviders}`);
+  setStatus(`Catálogo sincronizado. ${syncedProviders}`);
   await loadCatalog();
 }
 

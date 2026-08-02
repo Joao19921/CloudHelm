@@ -43,7 +43,7 @@
       <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <div class="flex items-center gap-3">
           <img
-            src="/static/brand/cloudhelm-logo.png"
+            src="/static/brand/cloudhelm-logo.svg"
             alt="CloudHelm"
             class="h-11 w-auto rounded-lg border border-white/10 bg-slate-950/80 p-1"
           />
@@ -124,12 +124,12 @@ $ terraform generate --modular</pre>
       </section>
 
       <section class="mt-12 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
-        <p class="text-center text-xs uppercase tracking-[0.2em] text-slate-400">Nativamente integrado aos lideres de mercado</p>
+        <p class="text-center text-xs uppercase tracking-[0.2em] text-slate-400">Nativamente integrado aos principais provedores de nuvem</p>
         <div class="mt-4 flex flex-wrap items-center justify-center gap-6 text-sm font-semibold text-slate-300">
           <span>AWS</span>
           <span>Google Cloud</span>
           <span>Microsoft Azure</span>
-          <span>HashiCorp Terraform</span>
+          <span>OCI</span>
         </div>
       </section>
 
@@ -209,6 +209,7 @@ $ terraform generate --modular</pre>
               <option value="aws">AWS</option>
               <option value="gcp">GCP</option>
               <option value="azure">Azure</option>
+              <option value="oci">OCI</option>
               <option value="auto">Auto (Ranking)</option>
             </select>
             <p class="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-300/10 p-3 text-xs text-slate-200">
@@ -244,8 +245,8 @@ $ terraform generate --modular</pre>
         <section class="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
           <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 class="text-lg font-semibold">Catalogo Cloud Providers</h2>
-              <p class="mt-1 text-sm text-slate-300">Sincronize e pesquise servicos para apoiar comparacao de provedores.</p>
+              <h2 class="text-lg font-semibold">Catálogo de serviços de nuvem</h2>
+              <p class="mt-1 text-sm text-slate-300">Sincronize e filtre serviços por provedor para uma comparação mais rápida.</p>
             </div>
             <div class="flex flex-col gap-2 sm:flex-row">
               <select
@@ -256,6 +257,7 @@ $ terraform generate --modular</pre>
                 <option value="aws">AWS</option>
                 <option value="gcp">GCP</option>
                 <option value="azure">Azure</option>
+                <option value="oci">OCI</option>
               </select>
               <input
                 id="catalog-search"
@@ -266,7 +268,7 @@ $ terraform generate --modular</pre>
                 id="catalog-sync-btn"
                 class="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
               >
-                Sincronizar Catalogo
+                Sincronizar Catálogo
               </button>
             </div>
           </div>
